@@ -13,6 +13,9 @@ export interface RadarrMovieData {
   rootFolderPath: string;
   minimumAvailability: string;
   monitored: boolean;
+  addOptions?: {
+    searchForMovie?: boolean;
+  };
 }
 
 export interface RadarrMovieResponse {
@@ -21,6 +24,22 @@ export interface RadarrMovieResponse {
   tmdbId: number;
   year: number;
   [key: string]: any;
+}
+
+export interface RadarrRootFolder {
+  id: number;
+  path: string;
+  accessible: boolean;
+  freeSpace: number;
+  unmappedFolders: any[];
+}
+
+export interface RadarrQualityProfile {
+  id: number;
+  name: string;
+  upgradeAllowed: boolean;
+  cutoff: number;
+  items: any[];
 }
 
 export class RadarrClient {
@@ -38,21 +57,117 @@ export class RadarrClient {
    * @returns The added movie data
    */
   async addMovie(movieData: RadarrMovieData): Promise<RadarrMovieResponse> {
-    const url = `${this.baseUrl}/api/v3/movie`;
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'X-Api-Key': this.apiKey,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(movieData),
-    });
+    try {
+      // Add default search option
+      if (!movieData.addOptions) {
+        movieData.addOptions = { searchForMovie: true };
+      }
+      
+      // If no quality profile is specified, try to get the first available one
+      if (!movieData.qualityProfileId || movieData.qualityProfileId <= 0) {
+        const profiles = await this.getQualityProfiles();
+        if (profiles.length > 0) {
+          movieData.qualityProfileId = profiles[0].id;
+          console.log(`Using quality profile: ${profiles[0].name} (ID: ${profiles[0].id})`);
+        } else {
+          throw new Error('No quality profiles found in Radarr');
+        }
+      }
+      
+      // If no root folder path is specified, try to get the first available one
+      if (!movieData.rootFolderPath) {
+        const rootFolders = await this.getRootFolders();
+        if (rootFolders.length > 0) {
+          movieData.rootFolderPath = rootFolders[0].path;
+          console.log(`Using root folder path: ${rootFolders[0].path}`);
+        } else {
+          throw new Error('No root folders found in Radarr');
+        }
+      }
 
-    if (!response.ok) {
-      throw new Error(`Failed to add movie to Radarr: ${response.status} ${response.statusText}`);
+      console.log('Adding movie to Radarr:', JSON.stringify(movieData, null, 2));
+      
+      const url = `${this.baseUrl}/api/v3/movie`;
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'X-Api-Key': this.apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(movieData),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Radarr API error response:', errorText);
+        throw new Error(`Failed to add movie to Radarr: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error adding movie to Radarr:', error);
+      throw error;
     }
+  }
 
-    return await response.json();
+  /**
+   * Get root folders from Radarr
+   * @returns List of root folders
+   */
+  async getRootFolders(): Promise<RadarrRootFolder[]> {
+    try {
+      const url = `${this.baseUrl}/api/v3/rootfolder`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'X-Api-Key': this.apiKey,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to get root folders from Radarr: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      const rootFolders: RadarrRootFolder[] = await response.json();
+      console.log(`Found ${rootFolders.length} root folders in Radarr`);
+      return rootFolders;
+    } catch (error) {
+      console.error('Error getting root folders from Radarr:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get quality profiles from Radarr
+   * @returns List of quality profiles
+   */
+  async getQualityProfiles(): Promise<RadarrQualityProfile[]> {
+    try {
+      const url = `${this.baseUrl}/api/v3/qualityprofile`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'X-Api-Key': this.apiKey,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to get quality profiles from Radarr: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      const profiles: RadarrQualityProfile[] = await response.json();
+      console.log(`Found ${profiles.length} quality profiles in Radarr`);
+      return profiles;
+    } catch (error) {
+      console.error('Error getting quality profiles from Radarr:', error);
+      return [];
+    }
   }
 }

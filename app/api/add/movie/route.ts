@@ -29,15 +29,26 @@ export async function POST(request: Request) {
     // Get movie details from TMDb
     const movieDetails = await tmdbClient.getMovieDetails(tmdbId);
     
-    // Add movie to Radarr
+    // Handle case where movie details couldn't be found
+    if (!movieDetails) {
+      return NextResponse.json(
+        { error: `Movie with TMDb ID ${tmdbId} not found` },
+        { status: 404 }
+      );
+    }
+    
+    // Add movie to Radarr with auto-detected settings
     const radarrMovie = await radarrClient.addMovie({
       tmdbId: movieDetails.id,
       title: movieDetails.title,
       year: movieDetails.year || 0,
-      qualityProfileId: 1, // Default quality profile ID, should be configurable
-      rootFolderPath: '/movies', // Default root folder path, should be configurable
+      qualityProfileId: 0, // Will be auto-detected from Radarr
+      rootFolderPath: '', // Will be auto-detected from Radarr
       minimumAvailability: 'released',
       monitored: true,
+      addOptions: {
+        searchForMovie: true // Automatically search for the movie after adding
+      }
     });
     
     return NextResponse.json({
