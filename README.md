@@ -1,36 +1,122 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Torrent Videoclub - Curador Visual
+
+![Next.js](https://img.shields.io/badge/Next.js-13.4+-000000?style=for-the-badge&logo=next.js)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.0+-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-4.9+-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+
+Torrent Videoclub is a visual curator application for discovering, filtering, and adding movies and TV series from trackers connected to arr-stack (Radarr, Sonarr, Prowlarr). It provides an intuitive interface to search for media content, view detailed information, and seamlessly add it to your Radarr/Sonarr instances for automatic downloading and organization.
+
+## Features
+
+- 🎬 **Movie & TV Series Discovery**: Search and browse movies and TV series from trackers connected to Prowlarr
+- 🔍 **Advanced Filtering**: Filter content by genre, year, rating, and quality
+- 🌐 **TMDb Integration**: Enrich torrent data with metadata from The Movie Database (TMDb)
+- 🔄 **Seamless Integration**: Add media directly to Radarr or Sonarr with one click
+- 🎨 **Modern UI**: Beautiful and responsive interface built with Tailwind CSS and Shadcn UI
+- 🌙 **Dark/Light Mode**: Choose between light and dark themes to match your preference
+- 📱 **Mobile Friendly**: Fully responsive design for all screen sizes
+
+## Prerequisites
+
+To run this application, you need to have the following services configured:
+
+- [Prowlarr](https://github.com/Prowlarr/Prowlarr) - For searching and indexing torrents
+- [Radarr](https://github.com/Radarr/Radarr) - For managing movies
+- [Sonarr](https://github.com/Sonarr/Sonarr) - For managing TV series
+- [TMDb API Key](https://developers.themoviedb.org/3/getting-started/introduction) - For fetching media metadata
+
+## Environment Variables
+
+Create a `.env.local` file in the root directory with the following variables:
+
+```bash
+# API Keys and URLs
+PROWLARR_URL=http://your-prowlarr-instance:9696
+PROWLARR_API_KEY=your-prowlarr-api-key
+
+TMDB_API_KEY=your-tmdb-api-key
+
+RADARR_URL=http://your-radarr-instance:7878
+RADARR_API_KEY=your-radarr-api-key
+
+SONARR_URL=http://your-sonarr-instance:8989
+SONARR_API_KEY=your-sonarr-api-key
+```
 
 ## Getting Started
 
-First, run the development server:
+### Installation
 
 ```bash
+# Clone the repository
+git clone https://github.com/yourusername/torrent-videoclub.git
+cd torrent-videoclub
+
+# Install dependencies
+npm install
+
+# Run the development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the application.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Building for Production
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+# Build the application
+npm run build
 
-## Learn More
+# Start the production server
+npm start
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Development
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+This project follows a strict Test-Driven Development (TDD) approach. All new features should be developed by writing tests first, then implementing the feature to make the tests pass.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+# Run tests
+npm test
 
-## Deploy on Vercel
+# Run tests with coverage
+npm run test:coverage
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# Run tests in watch mode during development
+npm run test:watch
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Tech Stack
+
+- **Framework**: [Next.js](https://nextjs.org/) with App Router
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/) and [Shadcn UI](https://ui.shadcn.com/)
+- **State Management**: React hooks and context
+- **API Integration**: Native fetch API with custom client classes
+- **Testing**: [Vitest](https://vitest.dev/) for unit and integration tests
+- **Theme Switching**: [next-themes](https://github.com/pacocoursey/next-themes) for dark/light mode
+
+## Project Structure
+
+```
+├── app/              # Next.js App Router pages and layouts
+│   ├── api/          # API routes for backend functionality
+│   ├── movies/       # Movies page
+│   └── series/       # TV Series page
+├── components/       # React components
+│   ├── ui/           # Base UI components (Shadcn)
+│   └── ...           # Custom components
+├── lib/              # Utility functions and API clients
+│   └── api/          # API client implementations
+└── test/             # Test files following the same structure
+```
+
+## Contributing
+
+1. Write tests for your feature/fix
+2. Implement the feature/fix
+3. Make sure all tests pass
+4. Submit a pull request
+
+## License
+
+MIT
