@@ -27,7 +27,15 @@ To run this application, you need to have the following services configured:
 
 ## Environment Variables
 
-Create a `.env.local` file in the root directory with the following variables:
+The project includes an `env.template` file that lists all required environment variables. To set up your environment:
+
+1. Copy the `env.template` file to `.env.local`:
+
+```bash
+cp env.template .env.local
+```
+
+2. Edit the `.env.local` file with your actual API keys and URLs:
 
 ```bash
 # API Keys and URLs
@@ -42,6 +50,8 @@ RADARR_API_KEY=your-radarr-api-key
 SONARR_URL=http://your-sonarr-instance:8989
 SONARR_API_KEY=your-sonarr-api-key
 ```
+
+**Note**: The `.env.local` file is automatically excluded from git, so your API keys will remain private.
 
 ## Getting Started
 
