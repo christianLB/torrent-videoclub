@@ -5,6 +5,14 @@
  * to search for movies and TV shows.
  */
 
+export interface ProwlarrIndexer {
+  id: number;
+  name: string;
+  protocol: string;
+  supportsRss: boolean;
+  supportsSearch: boolean;
+}
+
 export interface ProwlarrSearchResult {
   guid: string;
   title: string;
@@ -38,31 +46,106 @@ export class ProwlarrClient {
   }
 
   /**
+   * Get all enabled indexers from Prowlarr
+   * @returns List of indexers
+   */
+  async getIndexers(): Promise<ProwlarrIndexer[]> {
+    try {
+      const url = `${this.baseUrl}/api/v1/indexer`;
+      
+      console.log('Fetching indexers from:', url);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'X-Api-Key': this.apiKey,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Prowlarr indexer error:', errorText);
+        throw new Error(`Failed to fetch indexers from Prowlarr: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+      
+      const indexers: ProwlarrIndexer[] = await response.json();
+      console.log(`Found ${indexers.length} indexers`);
+      return indexers.filter(indexer => indexer.supportsSearch);
+    } catch (error) {
+      console.error('Error fetching indexers:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Search for movies in Prowlarr
    * @param query Search query
    * @returns Normalized movie results
    */
   async searchMovies(query: string): Promise<NormalizedMovieResult[]> {
-    // Movie categories in Prowlarr (2000=Movies, 2010=Movies/DVDR, etc.)
-    const categories = [2000, 2010, 2020, 2030, 2040, 2045, 2050, 2060].join(',');
-    
-    const url = `${this.baseUrl}/api/v1/search?query=${encodeURIComponent(query)}&categories=${categories}&limit=100`;
-    
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'X-Api-Key': this.apiKey,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch data from Prowlarr: ${response.status} ${response.statusText}`);
+    try {
+      // First, get all enabled indexers
+      const indexers = await this.getIndexers();
+      if (indexers.length === 0) {
+        console.warn('No enabled indexers found in Prowlarr');
+        return [];
+      }
+      
+      console.log(`Using ${indexers.length} indexers for search`);
+      
+      // Movie category ID (2000 for Movies)
+      const categoryId = 2000;
+      
+      // Get results from each indexer and combine them
+      const allResults: ProwlarrSearchResult[] = [];
+      
+      for (const indexer of indexers) {
+        try {
+          // For Prowlarr v1.35.1, we need to use the release/search endpoint
+          const indexerUrl = `${this.baseUrl}/api/v1/release`;
+          
+          console.log(`Searching in indexer: ${indexer.name} (ID: ${indexer.id})`);
+          
+          // Create direct search request for this indexer
+          // Prowlarr v1.35.1 uses a different endpoint for indexer-specific searches
+          const payload = {
+            query, // Search term
+            indexerId: indexer.id, // NOTE: Singular indexerId, not indexerIds array
+            // Don't include categories parameter as it causes validation errors
+          };
+          
+          const response = await fetch(indexerUrl, {
+            method: 'POST',
+            headers: {
+              'X-Api-Key': this.apiKey,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+          });
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`Error searching indexer ${indexer.name}:`, errorText);
+            continue; // Skip this indexer and try the next one
+          }
+          
+          const results: ProwlarrSearchResult[] = await response.json();
+          console.log(`Found ${results.length} results from ${indexer.name}`);
+          
+          allResults.push(...results);
+        } catch (error) {
+          console.error(`Error searching indexer ${indexer.name}:`, error);
+          // Continue with other indexers even if one fails
+        }
+      }
+      
+      console.log(`Total results from all indexers: ${allResults.length}`);
+      return allResults.map(result => this.normalizeMovieResult(result));
+    } catch (error) {
+      console.error('Error in searchMovies:', error);
+      throw error;
     }
-
-    const results: ProwlarrSearchResult[] = await response.json();
-    
-    return results.map(result => this.normalizeMovieResult(result));
   }
 
   /**
@@ -71,26 +154,68 @@ export class ProwlarrClient {
    * @returns Normalized series results
    */
   async searchSeries(query: string): Promise<NormalizedMovieResult[]> {
-    // TV categories in Prowlarr (5000=TV, 5010=TV/WEB-DL, etc.)
-    const categories = [5000, 5010, 5020, 5030, 5040, 5045, 5050, 5060].join(',');
-    
-    const url = `${this.baseUrl}/api/v1/search?query=${encodeURIComponent(query)}&categories=${categories}&limit=100`;
-    
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'X-Api-Key': this.apiKey,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch data from Prowlarr: ${response.status} ${response.statusText}`);
+    try {
+      // First, get all enabled indexers
+      const indexers = await this.getIndexers();
+      if (indexers.length === 0) {
+        console.warn('No enabled indexers found in Prowlarr');
+        return [];
+      }
+      
+      console.log(`Using ${indexers.length} indexers for search`);
+      
+      // TV category ID (5000 for TV)
+      const categoryId = 5000;
+      
+      // Get results from each indexer and combine them
+      const allResults: ProwlarrSearchResult[] = [];
+      
+      for (const indexer of indexers) {
+        try {
+          // For Prowlarr v1.35.1, we need to use the release/search endpoint
+          const indexerUrl = `${this.baseUrl}/api/v1/release`;
+          
+          console.log(`Searching in indexer: ${indexer.name} (ID: ${indexer.id})`);
+          
+          // Create direct search request for this indexer
+          // Prowlarr v1.35.1 uses a different endpoint for indexer-specific searches
+          const payload = {
+            query, // Search term
+            indexerId: indexer.id, // NOTE: Singular indexerId, not indexerIds array
+            // Don't include categories parameter as it causes validation errors
+          };
+          
+          const response = await fetch(indexerUrl, {
+            method: 'POST',
+            headers: {
+              'X-Api-Key': this.apiKey,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+          });
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`Error searching indexer ${indexer.name}:`, errorText);
+            continue; // Skip this indexer and try the next one
+          }
+          
+          const results: ProwlarrSearchResult[] = await response.json();
+          console.log(`Found ${results.length} results from ${indexer.name}`);
+          
+          allResults.push(...results);
+        } catch (error) {
+          console.error(`Error searching indexer ${indexer.name}:`, error);
+          // Continue with other indexers even if one fails
+        }
+      }
+      
+      console.log(`Total results from all indexers: ${allResults.length}`);
+      return allResults.map(result => this.normalizeMovieResult(result));
+    } catch (error) {
+      console.error('Error in searchSeries:', error);
+      throw error;
     }
-
-    const results: ProwlarrSearchResult[] = await response.json();
-    
-    return results.map(result => this.normalizeMovieResult(result));
   }
 
   /**

@@ -44,17 +44,33 @@ export class TMDbClient {
    * @returns Normalized movie results
    */
   async searchMovies(query: string): Promise<TMDbSearchResult[]> {
-    const url = `${this.baseUrl}/search/movie?api_key=${this.apiKey}&query=${encodeURIComponent(query)}&include_adult=false&language=en-US`;
-    
-    const response = await fetch(url, { method: 'GET' });
+    try {
+      // Log TMDb search (omitting API key for security)
+      console.log('Searching TMDb for movies:', query);
+      console.log('TMDb API key length:', this.apiKey ? this.apiKey.length : 0);
+      
+      // Check if API key is empty or very short (likely invalid)
+      if (!this.apiKey || this.apiKey.length < 5) {
+        console.warn('TMDb API key appears to be missing or invalid - TMDb features will be limited');
+        return []; // Return empty results instead of failing
+      }
+      
+      const url = `${this.baseUrl}/search/movie?api_key=${this.apiKey}&query=${encodeURIComponent(query)}&include_adult=false&language=en-US`;
+      
+      const response = await fetch(url, { method: 'GET' });
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch data from TMDb: ${response.status} ${response.statusText}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`TMDb API error: ${response.status} ${response.statusText}`, errorText);
+        return []; // Return empty results instead of failing
+      }
+
+      const data = await response.json();
+      return data.results.map((result: any) => this.normalizeMovieResult(result));
+    } catch (error) {
+      console.error('Error searching TMDb movies:', error);
+      return []; // Return empty array on error
     }
-
-    const data = await response.json();
-    
-    return data.results.map((result: any) => this.normalizeMovieResult(result));
   }
   
   /**
@@ -63,17 +79,32 @@ export class TMDbClient {
    * @returns Normalized TV show results
    */
   async searchTvShows(query: string): Promise<TMDbSearchResult[]> {
-    const url = `${this.baseUrl}/search/tv?api_key=${this.apiKey}&query=${encodeURIComponent(query)}&include_adult=false&language=en-US`;
-    
-    const response = await fetch(url, { method: 'GET' });
+    try {
+      // Log TMDb search (omitting API key for security)
+      console.log('Searching TMDb for TV shows:', query);
+      
+      // Check if API key is empty or very short (likely invalid)
+      if (!this.apiKey || this.apiKey.length < 5) {
+        console.warn('TMDb API key appears to be missing or invalid - TMDb features will be limited');
+        return []; // Return empty results instead of failing
+      }
+      
+      const url = `${this.baseUrl}/search/tv?api_key=${this.apiKey}&query=${encodeURIComponent(query)}&include_adult=false&language=en-US`;
+      
+      const response = await fetch(url, { method: 'GET' });
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch data from TMDb: ${response.status} ${response.statusText}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`TMDb API error: ${response.status} ${response.statusText}`, errorText);
+        return []; // Return empty results instead of failing
+      }
+
+      const data = await response.json();
+      return data.results.map((result: any) => this.normalizeTvShowResult(result));
+    } catch (error) {
+      console.error('Error searching TMDb TV shows:', error);
+      return []; // Return empty array on error
     }
-
-    const data = await response.json();
-    
-    return data.results.map((result: any) => this.normalizeTvShowResult(result));
   }
 
   /**
@@ -81,18 +112,29 @@ export class TMDbClient {
    * @param movieId TMDb movie ID
    * @returns Normalized movie details
    */
-  async getMovieDetails(movieId: number): Promise<TMDbMovieDetails> {
-    const url = `${this.baseUrl}/movie/${movieId}?api_key=${this.apiKey}&language=en-US`;
-    
-    const response = await fetch(url, { method: 'GET' });
+  async getMovieDetails(movieId: number): Promise<TMDbMovieDetails | null> {
+    try {
+      // Check if API key is missing
+      if (!this.apiKey || this.apiKey.length < 5) {
+        console.warn('TMDb API key appears to be missing or invalid - Cannot fetch movie details');
+        return null;
+      }
+      
+      const url = `${this.baseUrl}/movie/${movieId}?api_key=${this.apiKey}&language=en-US`;
+      
+      const response = await fetch(url, { method: 'GET' });
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch data from TMDb: ${response.status} ${response.statusText}`);
+      if (!response.ok) {
+        console.error(`TMDb API error when fetching movie details: ${response.status} ${response.statusText}`);
+        return null;
+      }
+
+      const result = await response.json();
+      return this.normalizeMovieDetails(result);
+    } catch (error) {
+      console.error('Error fetching movie details:', error);
+      return null;
     }
-
-    const result = await response.json();
-    
-    return this.normalizeMovieDetails(result);
   }
 
   /**
@@ -133,18 +175,29 @@ export class TMDbClient {
    * @param tvShowId TMDb TV show ID
    * @returns Normalized TV show details
    */
-  async getTvShowDetails(tvShowId: number): Promise<TMDbTvShowDetails> {
-    const url = `${this.baseUrl}/tv/${tvShowId}?api_key=${this.apiKey}&language=en-US`;
-    
-    const response = await fetch(url, { method: 'GET' });
+  async getTvShowDetails(tvShowId: number): Promise<TMDbTvShowDetails | null> {
+    try {
+      // Check if API key is missing
+      if (!this.apiKey || this.apiKey.length < 5) {
+        console.warn('TMDb API key appears to be missing or invalid - Cannot fetch TV show details');
+        return null;
+      }
+      
+      const url = `${this.baseUrl}/tv/${tvShowId}?api_key=${this.apiKey}&language=en-US`;
+      
+      const response = await fetch(url, { method: 'GET' });
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch data from TMDb: ${response.status} ${response.statusText}`);
+      if (!response.ok) {
+        console.error(`TMDb API error when fetching TV show details: ${response.status} ${response.statusText}`);
+        return null;
+      }
+
+      const result = await response.json();
+      return this.normalizeTvShowDetails(result);
+    } catch (error) {
+      console.error('Error fetching TV show details:', error);
+      return null;
     }
-
-    const result = await response.json();
-    
-    return this.normalizeTvShowDetails(result);
   }
 
   /**

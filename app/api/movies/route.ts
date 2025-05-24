@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ProwlarrClient } from '../../../lib/api/prowlarr-client';
+import { ProwlarrClientV2 } from '../../../lib/api/prowlarr-client-v2';
 import { TMDbClient } from '../../../lib/api/tmdb-client';
 
 export async function GET(request: Request) {
@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     const yearFilter = searchParams.get('year') ? parseInt(searchParams.get('year')!, 10) : undefined;
     
     // Initialize clients using environment variables
-    const prowlarrClient = new ProwlarrClient(
+    const prowlarrClient = new ProwlarrClientV2(
       process.env.PROWLARR_URL || 'http://localhost:9696',
       process.env.PROWLARR_API_KEY || ''
     );
@@ -27,12 +27,16 @@ export async function GET(request: Request) {
       ? prowlarrMovies.filter(movie => movie.year === yearFilter)
       : prowlarrMovies;
     
-    // Get movie metadata from TMDb
+    // Get movie metadata from TMDb (will return empty array if API key is missing)
     const tmdbMovies = await tmdbClient.searchMovies(query);
+    
+    // Check if TMDb API is working (has API key)
+    const hasTmdbData = tmdbMovies.length > 0 || process.env.TMDB_API_KEY;
+    console.log(`TMDb integration ${hasTmdbData ? 'is available' : 'is NOT available - results will have limited metadata'}`);
     
     // Combine the results to enrich movie data
     const enrichedMovies = filteredProwlarrMovies.map(prowlarrMovie => {
-      // Find matching TMDb movie
+      // Find matching TMDb movie (if TMDb data is available)
       const matchingTMDbMovie = tmdbMovies.find(tmdbMovie => 
         tmdbMovie.title.toLowerCase() === prowlarrMovie.title.toLowerCase() &&
         (!prowlarrMovie.year || !tmdbMovie.year || prowlarrMovie.year === tmdbMovie.year)
@@ -48,6 +52,7 @@ export async function GET(request: Request) {
           genreIds: matchingTMDbMovie.genreIds,
           overview: matchingTMDbMovie.overview,
         } : undefined,
+        tmdbAvailable: hasTmdbData, // Flag to indicate if TMDb integration is available
       };
     });
     
