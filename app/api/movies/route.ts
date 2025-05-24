@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ProwlarrClientV2 } from '../../../lib/api/prowlarr-client-v2';
+import { ProwlarrClientV3 } from '../../../lib/api/prowlarr-client-v3';
 import { TMDbClient } from '../../../lib/api/tmdb-client';
 
 export async function GET(request: Request) {
@@ -10,9 +10,10 @@ export async function GET(request: Request) {
     const yearFilter = searchParams.get('year') ? parseInt(searchParams.get('year')!, 10) : undefined;
     
     // Initialize clients using environment variables
-    const prowlarrClient = new ProwlarrClientV2(
+    const prowlarrClient = new ProwlarrClientV3(
       process.env.PROWLARR_URL || 'http://localhost:9696',
-      process.env.PROWLARR_API_KEY || ''
+      process.env.PROWLARR_API_KEY || '',
+      true // Enable fallback to mock data
     );
     
     const tmdbClient = new TMDbClient(
