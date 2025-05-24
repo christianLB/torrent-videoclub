@@ -61,6 +61,44 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the application.
 
+## Usage Instructions
+
+### Searching for Movies/Series
+1. Navigate to the Movies or Series page using the navigation menu at the top of the application.
+2. Enter your search query in the search bar and click the "Search" button.
+3. Results will be displayed as cards with poster images, titles, and relevant information.
+
+### Filtering Results
+1. After performing a search, use the filter bar at the top of the results to refine your search:
+   - **Genre**: Filter by specific genres (Action, Drama, Comedy, etc.)
+   - **Year**: Filter by release year
+   - **Rating**: Filter by minimum rating (7+, 8+, 9+)
+   - **Resolution**: Filter by video quality (480p, 720p, 1080p, 4K)
+
+### Viewing Detailed Information
+1. Click on any movie or series card to open a detailed view.
+2. The detailed view provides additional information including:
+   - Full synopsis/overview
+   - Cast and crew (when available)
+   - Runtime/number of seasons
+   - Genres
+   - Rating
+   - Release date
+
+### Adding to Radarr/Sonarr
+1. To add a movie to Radarr, click the "Add to Radarr" button on the movie card or in the detailed view.
+2. To add a series to Sonarr, click the "Add to Sonarr" button on the series card or in the detailed view.
+3. A notification will appear confirming the successful addition or indicating any errors.
+
+### Switching Between Light and Dark Mode
+1. Click the theme toggle button in the top-right corner of the application.
+2. The interface will switch between light and dark mode based on your selection.
+
+### Mobile Usage
+- The application is fully responsive and works on mobile devices.
+- On smaller screens, the layout will adjust to provide an optimal viewing experience.
+- All features are available on mobile, including searching, filtering, and adding content.
+
 ### Building for Production
 
 ```bash
