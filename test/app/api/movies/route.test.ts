@@ -74,6 +74,7 @@ describe('/api/movies route', () => {
       indexer: 'test-indexer',
       seeders: 10,
       leechers: 5,
+      tmdbAvailable: true,
       tmdb: {
         id: 123,
         posterPath: 'https://image.tmdb.org/t/p/w500/test-poster.jpg',

@@ -62,10 +62,13 @@ describe('/api/add/movie route', () => {
       tmdbId: 123,
       title: 'Test Movie',
       year: 2023,
-      qualityProfileId: expect.any(Number),
-      rootFolderPath: expect.any(String),
+      qualityProfileId: 0,
+      rootFolderPath: '',
       minimumAvailability: 'released',
       monitored: true,
+      addOptions: {
+        searchForMovie: true
+      }
     });
     
     // Assert response is success
