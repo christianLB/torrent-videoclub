@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { MediaCard } from '@/components/media-card';
 import { FilterBar, FilterOptions } from '@/components/filter-bar';
 import { SearchBar } from '@/components/search-bar';
-import { LoadingSpinner } from '@/components/loading-spinner';
 import { useNotification } from '@/components/notification-context';
+import { HackerMediaCard } from '@/components/hacker-media-card';
+import { HackerLoadingSpinner } from '@/components/hacker-loading-spinner';
 
 interface Movie {
   guid: string;
@@ -185,13 +185,12 @@ export default function MoviesPage() {
       
       {loading ? (
         <div className="flex flex-col justify-center items-center h-64 space-y-4">
-          <LoadingSpinner size="large" />
-          <div className="text-lg font-medium">Loading movies...</div>
+          <HackerLoadingSpinner size="large" message="Scanning network for movies" />
         </div>
       ) : filteredMovies.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredMovies.map((movie) => (
-            <MediaCard
+            <HackerMediaCard
               key={movie.guid}
               guid={movie.guid}
               title={movie.title}
@@ -208,12 +207,14 @@ export default function MoviesPage() {
           ))}
         </div>
       ) : movies.length > 0 ? (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">No movies match your filters. Try adjusting your criteria.</p>
+        <div className="text-center py-12 font-mono">
+          <p className="text-green-600">[ERROR] No matching results found</p>
+          <p className="text-green-400 mt-2">Adjust filtering parameters and try again.</p>
         </div>
       ) : (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">Search for movies to get started.</p>
+        <div className="text-center py-12 font-mono">
+          <p className="text-green-500">{'_>'} Enter search query to begin scan</p>
+          <p className="text-green-800 mt-2 text-xs">SYSTEM IDLE - WAITING FOR INPUT</p>
         </div>
       )}
     </div>

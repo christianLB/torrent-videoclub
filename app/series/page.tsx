@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { MediaCard } from '@/components/media-card';
+import { useState } from 'react';
 import { FilterBar, FilterOptions } from '@/components/filter-bar';
 import { SearchBar } from '@/components/search-bar';
-import { LoadingSpinner } from '@/components/loading-spinner';
 import { useNotification } from '@/components/notification-context';
+import { HackerMediaCard } from '@/components/hacker-media-card';
+import { HackerLoadingSpinner } from '@/components/hacker-loading-spinner';
 
 interface Series {
   guid: string;
@@ -35,7 +35,6 @@ export default function SeriesPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { showNotification } = useNotification();
-  const [searchQuery, setSearchQuery] = useState('');
   const [genres, setGenres] = useState<{ id: number; name: string }[]>([
     { id: 10759, name: 'Action & Adventure' },
     { id: 16, name: 'Animation' },
@@ -94,23 +93,23 @@ export default function SeriesPage() {
     
     if (filters.genre) {
       filtered = filtered.filter(
-        show => show.tmdb?.genreIds.includes(filters.genre as number)
+        series => series.tmdb?.genreIds.includes(filters.genre as number)
       );
     }
     
     if (filters.year) {
-      filtered = filtered.filter(show => show.year === filters.year);
+      filtered = filtered.filter(series => series.year === filters.year);
     }
     
     if (filters.minRating) {
       filtered = filtered.filter(
-        show => (show.tmdb?.voteAverage || 0) >= (filters.minRating as number)
+        series => (series.tmdb?.voteAverage || 0) >= (filters.minRating as number)
       );
     }
     
     if (filters.resolution) {
       filtered = filtered.filter(
-        show => show.quality?.toLowerCase().includes((filters.resolution as string).toLowerCase())
+        series => series.quality?.toLowerCase().includes((filters.resolution as string).toLowerCase())
       );
     }
     
@@ -118,9 +117,9 @@ export default function SeriesPage() {
   };
 
   const handleAddSeries = async (guid: string) => {
-    const show = series.find(s => s.guid === guid);
+    const seriesItem = series.find(s => s.guid === guid);
     
-    if (!show || !show.tmdb) {
+    if (!seriesItem || !seriesItem.tmdb) {
       setError('Could not find series details to add.');
       return;
     }
@@ -132,7 +131,7 @@ export default function SeriesPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          tmdbId: show.tmdb.id,
+          tvdbId: seriesItem.tmdb.id,
         }),
       });
       
@@ -150,7 +149,7 @@ export default function SeriesPage() {
         filteredSeries.map(s => (s.guid === guid ? { ...s, added: true } : s))
       );
       
-      showNotification(`Added "${show.title}" to Sonarr successfully!`, 'success');
+      showNotification(`Added "${seriesItem.title}" to Sonarr successfully!`, 'success');
     } catch (err) {
       setError('Failed to add series to Sonarr. Please try again.');
       showNotification('Failed to add series to Sonarr. Please try again.', 'error');
@@ -160,19 +159,19 @@ export default function SeriesPage() {
 
   return (
     <div className="container py-8">
-      <h1 className="text-3xl font-bold mb-6">TV Series</h1>
+      <h1 className="text-3xl font-bold mb-6 font-mono text-green-500">Series Catalog <span className="text-xs text-green-700 ml-2">[BETA]</span></h1>
       
       <div className="mb-6">
         <SearchBar 
-          placeholder="Search for TV series..."
+          placeholder="Scan for TV series..."
           onSearch={handleSearch}
           isLoading={loading}
         />
       </div>
       
       {error && (
-        <div className="bg-destructive/10 text-destructive p-4 rounded-md mb-6">
-          {error}
+        <div className="bg-red-900/20 text-red-500 p-4 rounded-md mb-6 font-mono border border-red-900/50">
+          <span className="text-red-400 mr-2">[ERROR]</span> {error}
         </div>
       )}
       
@@ -182,35 +181,36 @@ export default function SeriesPage() {
       
       {loading ? (
         <div className="flex flex-col justify-center items-center h-64 space-y-4">
-          <LoadingSpinner size="large" />
-          <div className="text-lg font-medium">Loading series...</div>
+          <HackerLoadingSpinner size="large" message="Accessing secure feeds" />
         </div>
       ) : filteredSeries.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredSeries.map((show) => (
-            <MediaCard
-              key={show.guid}
-              guid={show.guid}
-              title={show.title}
-              year={show.year}
-              posterPath={show.tmdb?.posterPath}
-              rating={show.tmdb?.voteAverage}
+          {filteredSeries.map((series) => (
+            <HackerMediaCard
+              key={series.guid}
+              guid={series.guid}
+              title={series.title}
+              year={series.year}
+              posterPath={series.tmdb?.posterPath}
+              rating={series.tmdb?.voteAverage}
               mediaType="series"
-              quality={show.quality}
-              seeders={show.seeders}
-              size={show.sizeFormatted}
-              tmdbId={show.tmdb?.id}
+              quality={series.quality}
+              seeders={series.seeders}
+              size={series.sizeFormatted}
+              tmdbId={series.tmdb?.id}
               handleAddClick={handleAddSeries}
             />
           ))}
         </div>
       ) : series.length > 0 ? (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">No series match your filters. Try adjusting your criteria.</p>
+        <div className="text-center py-12 font-mono">
+          <p className="text-green-600">[ERROR] No matching results found</p>
+          <p className="text-green-400 mt-2">Adjust filtering parameters and try again.</p>
         </div>
       ) : (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">Search for TV series to get started.</p>
+        <div className="text-center py-12 font-mono">
+          <p className="text-green-500">{'_>'} Enter search query to begin scan</p>
+          <p className="text-green-800 mt-2 text-xs">SYSTEM IDLE - WAITING FOR INPUT</p>
         </div>
       )}
     </div>
