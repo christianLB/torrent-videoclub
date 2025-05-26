@@ -11,6 +11,7 @@ import { CacheService } from './cache-service';
 import { ProwlarrClient } from '../api/prowlarr-client';
 import { TrendingContentClient, CONTENT_CATEGORIES } from '../api/trending-content-client';
 import { TMDbClient } from '../api/tmdb-client';
+import { MetadataEnricher } from './metadata-enricher';
 
 /**
  * Service for curating and providing featured content
@@ -30,37 +31,39 @@ export class CuratorService {
    * This should be called before using any other methods
    */
   static initialize(): void {
-    // Skip initialization if already done
-    if (this.prowlarrClient && this.trendingClient) {
-      return;
+    const prowlarrUrl = process.env.PROWLARR_URL || '';
+    const prowlarrApiKey = process.env.PROWLARR_API_KEY || '';
+    const tmdbApiKey = process.env.TMDB_API_KEY || '';
+    
+    // Only initialize clients if API keys are available
+    if (prowlarrUrl && prowlarrApiKey) {
+      // First initialize the Prowlarr client
+      this.prowlarrClient = new ProwlarrClient(prowlarrUrl, prowlarrApiKey);
+      
+      // Then initialize the TrendingContentClient with the Prowlarr client instance
+      this.trendingClient = new TrendingContentClient(this.prowlarrClient);
+      
+      this.useRealData = true;
+      console.log('ProwlarrClient and TrendingContentClient initialized successfully');
+    } else {
+      console.warn('Prowlarr URL or API key not found, API clients not initialized');
+      this.useRealData = false;
     }
     
-    try {
-      // Initialize Prowlarr client
-      const prowlarrUrl = process.env.PROWLARR_URL || '';
-      const prowlarrApiKey = process.env.PROWLARR_API_KEY || '';
-      if (prowlarrUrl && prowlarrApiKey) {
-        this.prowlarrClient = new ProwlarrClient(prowlarrUrl, prowlarrApiKey);
-        this.trendingClient = new TrendingContentClient(this.prowlarrClient);
-        console.log('Prowlarr client initialized successfully');
-      } else {
-        console.warn('Prowlarr configuration missing, will use mock data');
-        this.useRealData = false;
-      }
+    // Initialize TMDb client
+    if (tmdbApiKey) {
+      this.tmdbClient = new TMDbClient(tmdbApiKey);
+      this.useTMDb = true;
+      console.log('TMDbClient initialized successfully');
       
-      // Initialize TMDb client
-      const tmdbApiKey = process.env.TMDB_API_KEY || '';
-      if (tmdbApiKey) {
-        this.tmdbClient = new TMDbClient(tmdbApiKey);
-        console.log('TMDb client initialized successfully');
-      } else {
-        console.warn('TMDb configuration missing, metadata enrichment disabled');
-        this.useTMDb = false;
-      }
-    } catch (error) {
-      console.error('Error initializing Curator Service:', error);
-      this.useRealData = false;
+      // Initialize the MetadataEnricher with the TMDb client
+      MetadataEnricher.initialize(this.tmdbClient);
+    } else {
+      console.warn('TMDb API key not found, TMDb client not initialized');
       this.useTMDb = false;
+      
+      // Initialize the MetadataEnricher without a TMDb client (will use mock data)
+      MetadataEnricher.initialize();
     }
   }
   /**
@@ -245,30 +248,55 @@ export class CuratorService {
       }
       
       // 2. Fetch content for each category
-      const categories = [
-        {
-          id: CONTENT_CATEGORIES.TRENDING_MOVIES,
-          title: 'Trending Movies',
-          items: trendingMovies.map(movie => ({
-            ...movie,
-            inLibrary: this.isInLibrary(movie.guid),
-            downloading: this.isDownloading(movie.guid).downloading,
-            downloadProgress: this.isDownloading(movie.guid).progress,
-            tmdbAvailable: true,
-            tmdb: {
-              id: 0,
-              title: movie.title,
-              releaseDate: movie.year ? `${movie.year}-01-01` : '',
-              year: movie.year || new Date().getFullYear(),
-              posterPath: '',
-              backdropPath: '',
-              voteAverage: 0,
-              genreIds: [],
-              overview: ''
+      // Create categories array with trending movies
+      const trendingMoviesCategory: FeaturedCategory = {
+        id: CONTENT_CATEGORIES.TRENDING_MOVIES,
+        title: 'Trending Movies',
+        items: [] as EnhancedMediaItem[]
+      };
+      
+      // Enrich trending movies with TMDb metadata if available
+      if (this.useTMDb) {
+        console.log('Enriching trending movies with TMDb metadata');
+        const enrichedItems = await Promise.all(
+          trendingMovies.map(async (movie) => {
+            try {
+              // Use MetadataEnricher to get TMDb data
+              const enriched = await MetadataEnricher.enrichMovie(movie);
+              
+              // Add library status
+              enriched.inLibrary = this.isInLibrary(movie.guid);
+              const downloadStatus = this.isDownloading(movie.guid);
+              enriched.downloading = downloadStatus.downloading;
+              enriched.downloadProgress = downloadStatus.progress;
+              
+              return enriched;
+            } catch (error) {
+              console.error('Error enriching movie:', error);
+              // Fallback to basic item if enrichment fails
+              return {
+                ...movie,
+                inLibrary: this.isInLibrary(movie.guid),
+                downloading: this.isDownloading(movie.guid).downloading,
+                downloadProgress: this.isDownloading(movie.guid).progress,
+                tmdbAvailable: false
+              };
             }
-          }))
-        }
-      ];
+          })
+        );
+        trendingMoviesCategory.items = enrichedItems;
+      } else {
+        // Basic metadata without TMDb enrichment
+        trendingMoviesCategory.items = trendingMovies.map(movie => ({
+          ...movie,
+          inLibrary: this.isInLibrary(movie.guid),
+          downloading: this.isDownloading(movie.guid).downloading,
+          downloadProgress: this.isDownloading(movie.guid).progress,
+          tmdbAvailable: false
+        }));
+      }
+      
+      const categories = [trendingMoviesCategory];
       
       // Fetch popular TV shows
       const popularTV = await this.trendingClient.getPopularTV({
@@ -277,28 +305,56 @@ export class CuratorService {
       });
       
       if (popularTV.length > 0) {
-        categories.push({
+        // Create TV shows category
+        const popularTVCategory: FeaturedCategory = {
           id: CONTENT_CATEGORIES.POPULAR_TV,
           title: 'Popular TV Shows',
-          items: popularTV.map(show => ({
+          items: [] as EnhancedMediaItem[]
+        };
+        
+        // Enrich TV shows with TMDb metadata if available
+        if (this.useTMDb) {
+          console.log('Enriching TV shows with TMDb metadata');
+          const enrichedTVItems = await Promise.all(
+            popularTV.map(async (show) => {
+              try {
+                // Use MetadataEnricher to get TMDb data
+                const enriched = await MetadataEnricher.enrichTVSeries(show);
+                
+                // Add library status
+                enriched.inLibrary = this.isInLibrary(show.guid);
+                const downloadStatus = this.isDownloading(show.guid);
+                enriched.downloading = downloadStatus.downloading;
+                enriched.downloadProgress = downloadStatus.progress;
+                
+                return enriched;
+              } catch (error) {
+                console.error('Error enriching TV show:', error);
+                // Fallback to basic item if enrichment fails
+                return {
+                  ...show,
+                  inLibrary: this.isInLibrary(show.guid),
+                  downloading: this.isDownloading(show.guid).downloading,
+                  downloadProgress: this.isDownloading(show.guid).progress,
+                  tmdbAvailable: false
+                };
+              }
+            })
+          );
+          popularTVCategory.items = enrichedTVItems;
+        } else {
+          // Basic metadata without TMDb enrichment
+          popularTVCategory.items = popularTV.map(show => ({
             ...show,
             inLibrary: this.isInLibrary(show.guid),
             downloading: this.isDownloading(show.guid).downloading,
             downloadProgress: this.isDownloading(show.guid).progress,
-            tmdbAvailable: true,
-            tmdb: {
-              id: 0,
-              title: show.title,
-              releaseDate: show.year ? `${show.year}-01-01` : '',
-              year: show.year || new Date().getFullYear(),
-              posterPath: '',
-              backdropPath: '',
-              voteAverage: 0,
-              genreIds: [],
-              overview: ''
-            }
-          }))
-        });
+            tmdbAvailable: false
+          }));
+        }
+        
+        // Add to categories
+        categories.push(popularTVCategory);
       }
       
       // Fetch new releases
@@ -309,28 +365,56 @@ export class CuratorService {
       });
       
       if (newReleases.length > 0) {
-        categories.push({
+        // Create new releases category
+        const newReleasesCategory: FeaturedCategory = {
           id: CONTENT_CATEGORIES.NEW_RELEASES,
           title: 'New Releases',
-          items: newReleases.map(movie => ({
+          items: [] as EnhancedMediaItem[]
+        };
+        
+        // Enrich new releases with TMDb metadata if available
+        if (this.useTMDb) {
+          console.log('Enriching new releases with TMDb metadata');
+          const enrichedNewReleases = await Promise.all(
+            newReleases.map(async (movie) => {
+              try {
+                // Use MetadataEnricher to get TMDb data
+                const enriched = await MetadataEnricher.enrichMovie(movie);
+                
+                // Add library status
+                enriched.inLibrary = this.isInLibrary(movie.guid);
+                const downloadStatus = this.isDownloading(movie.guid);
+                enriched.downloading = downloadStatus.downloading;
+                enriched.downloadProgress = downloadStatus.progress;
+                
+                return enriched;
+              } catch (error) {
+                console.error('Error enriching new release:', error);
+                // Fallback to basic item if enrichment fails
+                return {
+                  ...movie,
+                  inLibrary: this.isInLibrary(movie.guid),
+                  downloading: this.isDownloading(movie.guid).downloading,
+                  downloadProgress: this.isDownloading(movie.guid).progress,
+                  tmdbAvailable: false
+                };
+              }
+            })
+          );
+          newReleasesCategory.items = enrichedNewReleases;
+        } else {
+          // Basic metadata without TMDb enrichment
+          newReleasesCategory.items = newReleases.map(movie => ({
             ...movie,
             inLibrary: this.isInLibrary(movie.guid),
             downloading: this.isDownloading(movie.guid).downloading,
             downloadProgress: this.isDownloading(movie.guid).progress,
-            tmdbAvailable: true,
-            tmdb: {
-              id: 0,
-              title: movie.title,
-              releaseDate: movie.year ? `${movie.year}-01-01` : '',
-              year: movie.year || new Date().getFullYear(),
-              posterPath: '',
-              backdropPath: '',
-              voteAverage: 0,
-              genreIds: [],
-              overview: ''
-            }
-          }))
-        });
+            tmdbAvailable: false
+          }));
+        }
+        
+        // Add to categories
+        categories.push(newReleasesCategory);
       }
       
       // Add the categories to the result
