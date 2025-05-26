@@ -1,0 +1,157 @@
+/**
+ * ProwlarrClient
+ * 
+ * A client for interacting with the Prowlarr API to search for torrents
+ */
+import axios from 'axios';
+import { FeaturedItem } from '../types/featured';
+
+// Define the shape of a Prowlarr search result
+interface ProwlarrResult {
+  guid: string;
+  title: string;
+  indexer: string;
+  publishDate: string;
+  size: number;
+  seeders: number;
+  leechers: number;
+  categories: string[];
+  downloadUrl: string;
+  infoUrl: string;
+  protocol: string;
+}
+
+// Define search parameters
+export interface SearchParams {
+  query?: string;
+  categories?: string[];
+  limit?: number;
+  offset?: number;
+  minSeeders?: number;
+}
+
+export class ProwlarrClient {
+  private apiUrl: string;
+  private apiKey: string;
+  
+  constructor(apiUrl: string, apiKey: string) {
+    // Ensure apiUrl doesn't end with a slash
+    this.apiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+    this.apiKey = apiKey;
+  }
+  
+  /**
+   * Search for torrents using the Prowlarr API
+   */
+  async search(params: SearchParams): Promise<ProwlarrResult[]> {
+    try {
+      console.log(`[ProwlarrClient] Searching with params:`, {
+        query: params.query,
+        categories: params.categories,
+        limit: params.limit
+      });
+      
+      // Construct the search URL
+      const searchUrl = `${this.apiUrl}/api/v1/search`;
+      
+      // Build query parameters
+      const queryParams = {
+        apikey: this.apiKey,
+        query: params.query || '',
+        categories: params.categories?.join(',') || '',
+        limit: params.limit || 100,
+        offset: params.offset || 0
+      };
+      
+      // Make the request
+      const response = await axios.get(searchUrl, { params: queryParams });
+      
+      if (!response.data || !Array.isArray(response.data)) {
+        console.warn('[ProwlarrClient] Unexpected response format:', response.data);
+        return [];
+      }
+      
+      // Filter results by minimum seeders if specified
+      let results = response.data as ProwlarrResult[];
+      
+      if (params.minSeeders && params.minSeeders > 0) {
+        results = results.filter(result => result.seeders >= (params.minSeeders || 0));
+      }
+      
+      console.log(`[ProwlarrClient] Search returned ${results.length} results`);
+      return results;
+    } catch (error) {
+      console.error('[ProwlarrClient] Search error:', error);
+      return [];
+    }
+  }
+  
+  /**
+   * Convert a Prowlarr result to a FeaturedItem
+   */
+  convertToFeaturedItem(result: ProwlarrResult): FeaturedItem {
+    // Extract year from title if possible
+    const yearMatch = result.title.match(/\b(19|20)\d{2}\b/);
+    const year = yearMatch ? parseInt(yearMatch[0]) : new Date().getFullYear();
+    
+    // Extract quality from title if possible
+    const qualityMatch = result.title.match(/\b(720p|1080p|2160p|4K)\b/i);
+    const quality = qualityMatch ? qualityMatch[0].toLowerCase() : undefined;
+    
+    // Determine media type based on categories
+    const isTV = result.categories.some(cat => 
+      cat.toLowerCase().includes('tv') || 
+      cat.toLowerCase().includes('series') ||
+      cat.toLowerCase().includes('show')
+    );
+    
+    // Generate a unique ID
+    const id = `prowlarr-${result.guid.replace(/[^a-zA-Z0-9]/g, '')}`;
+    
+    // Create a basic featured item
+    return {
+      id,
+      guid: result.guid,
+      title: this.cleanTitle(result.title),
+      overview: result.title, // Use full title as overview initially
+      backdropPath: '/api/placeholder/1920/1080', // Placeholder until enriched
+      posterPath: '/api/placeholder/500/750', // Placeholder until enriched
+      mediaType: isTV ? 'tv' : 'movie',
+      rating: 0, // Will be enriched later
+      year,
+      genres: [], // Will be enriched later
+      quality,
+      size: result.size,
+      seeders: result.seeders,
+      leechers: result.leechers,
+      publishDate: result.publishDate,
+      downloadUrl: result.downloadUrl,
+      infoUrl: result.infoUrl,
+      inLibrary: false, // Will be checked later
+      downloading: false, // Will be checked later
+      tmdbAvailable: false // Will be enriched later
+    };
+  }
+  
+  /**
+   * Clean up torrent title to make it more presentable
+   */
+  private cleanTitle(title: string): string {
+    // Remove common torrent naming patterns
+    let cleaned = title
+      .replace(/\b(720p|1080p|2160p|4K|HDTV|WEB-DL|WEBRip|BRRip|BluRay|x264|x265|HEVC|AAC|AC3|REMUX)\b/gi, '')
+      .replace(/\b(XviD|DTS|DD5\.1|FLAC|YIFY|RARBG|SPARKS|DRONES|AMIABLE|FGT|VYNDROS)\b/gi, '')
+      .replace(/\[.*?\]|\(.*?\)|\{.*?\}/g, '')
+      .replace(/\.\w{2,4}$/, '') // Remove file extension
+      .replace(/\./g, ' ')
+      .replace(/-/g, ' ')
+      .replace(/_/g, ' ')
+      .replace(/\s+/g, ' ') // Replace multiple spaces with a single space
+      .trim();
+    
+    // Capitalize first letter of each word
+    cleaned = cleaned.replace(/\b\w/g, c => c.toUpperCase());
+    
+    return cleaned;
+  }
+}

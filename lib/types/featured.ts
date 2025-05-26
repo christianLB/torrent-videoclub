@@ -55,6 +55,9 @@ export interface FeaturedItem {
   indexer?: string;
   seeders?: number;
   leechers?: number;
+  publishDate?: string;
+  downloadUrl?: string;
+  infoUrl?: string;
 }
 
 /**

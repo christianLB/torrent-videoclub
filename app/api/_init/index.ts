@@ -17,13 +17,20 @@ export async function initializeServer() {
   
   console.log('[Server] Initializing server components...');
   
-  // Force initialize CuratorService with hardcoded credentials
-  // This ensures we always use real data regardless of environment variables
-  CuratorService.forceInitialize(
-    'http://192.168.1.62:9696',
-    'c3cbb350fea74bf693fa117e10e28613',
-    '2a64ce7c85da2b1542930819517136ea'
-  );
+  // Initialize CuratorService with environment variables
+  // This ensures we use real data from the configured API endpoints
+  CuratorService.initialize();
+  
+  // Log whether we're using real data
+  console.log(`[Server] Using real data: ${CuratorService.isUsingRealData()}`);
+  
+  // If not using real data, log a warning
+  if (!CuratorService.isUsingRealData()) {
+    console.warn('[Server] Not using real data. Check environment variables:');
+    console.warn('- PROWLARR_URL: ' + (process.env.PROWLARR_URL ? 'Set' : 'Not set'));
+    console.warn('- PROWLARR_API_KEY: ' + (process.env.PROWLARR_API_KEY ? 'Set' : 'Not set'));
+    console.warn('- TMDB_API_KEY: ' + (process.env.TMDB_API_KEY ? 'Set' : 'Not set'));
+  }
   
   // Initialize the cache scheduler
   await CacheSchedulerService.initialize();
