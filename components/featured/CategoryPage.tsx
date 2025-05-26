@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/navbar';
 import MediaCard from './MediaCard';
 import { FeaturedCategory } from '@/lib/types/featured';
-import { useCacheRefresh } from '@/lib/hooks/use-cache-refresh';
+// No need for client-side cache refresh
 
 interface CategoryPageProps {
   categoryId: string;
@@ -21,7 +21,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ categoryId }) => {
   const page = parseInt(searchParams.get('page') || '1', 10);
   const itemsPerPage = 20;
   
-  const { refreshCategory, clearCache } = useCacheRefresh();
+  // Server-side caching only - no client-side refresh needed
   
   useEffect(() => {
     // Define function to fetch category data via API endpoint

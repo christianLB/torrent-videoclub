@@ -10,14 +10,10 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379
       - NODE_ENV=development
-      # API credentials with explicit values
+      # API credentials with explicit values - server-side only
       - PROWLARR_URL=http://192.168.1.62:9696
       - PROWLARR_API_KEY=c3cbb350fea74bf693fa117e10e28613
       - TMDB_API_KEY=2a64ce7c85da2b1542930819517136ea
-      # Public versions for client-side access
-      - NEXT_PUBLIC_PROWLARR_URL=http://192.168.1.62:9696
-      - NEXT_PUBLIC_PROWLARR_API_KEY=c3cbb350fea74bf693fa117e10e28613
-      - NEXT_PUBLIC_TMDB_API_KEY=2a64ce7c85da2b1542930819517136ea
       # Other API credentials
       - RADARR_URL
       - RADARR_API_KEY
