@@ -8,6 +8,9 @@ COPY package*.json ./
 # Install dependencies
 RUN npm ci
 
+# Explicitly install node-cron for scheduling
+RUN npm install node-cron@4.0.7
+
 # Copy the rest of the application
 COPY . .
 
