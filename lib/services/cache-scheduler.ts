@@ -28,18 +28,27 @@ export class CacheSchedulerService {
     }
     
     try {
-      // Dynamically import node-cron
-      const cronModule = await import('node-cron');
-      cron = cronModule.default || cronModule;
-      
-      console.log('[CacheScheduler] Initializing cache scheduler...');
-      
-      // Schedule cache refresh every hour
-      this.scheduleHourlyRefresh();
-      
-      // We're not running an immediate refresh by default
-      // as it's expensive and will happen at the scheduled time
-      console.log('[CacheScheduler] Scheduled refresh will occur at the next hour mark');
+      // Try to dynamically import node-cron
+      try {
+        const cronModule = await import('node-cron');
+        cron = cronModule.default || cronModule;
+        
+        console.log('[CacheScheduler] Initializing cache scheduler with node-cron...');
+        
+        // Schedule cache refresh every hour
+        this.scheduleHourlyRefresh();
+        
+        // We're not running an immediate refresh by default
+        // as it's expensive and will happen at the scheduled time
+        console.log('[CacheScheduler] Scheduled refresh will occur at the next hour mark');
+      } catch (cronError: unknown) {
+        const errorMessage = cronError instanceof Error ? cronError.message : 'Unknown error';
+        console.warn('[CacheScheduler] node-cron not available:', errorMessage);
+        console.log('[CacheScheduler] Will run in manual mode only (no automatic scheduling)');
+        
+        // Even without node-cron, we can still do a manual refresh
+        // This allows the force-init endpoint to work
+      }
       
       initialized = true;
       console.log('[CacheScheduler] Cache scheduler initialized successfully');

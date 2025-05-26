@@ -94,13 +94,17 @@ export class CuratorService {
     // Log environment variables for debugging
     console.log('[CuratorService] Environment variables check:', {
       hasProwlarrUrl: !!process.env.PROWLARR_URL,
+      hasProwlarrUrlPublic: !!process.env.NEXT_PUBLIC_PROWLARR_URL,
       hasProwlarrApiKey: !!process.env.PROWLARR_API_KEY,
+      hasProwlarrApiKeyPublic: !!process.env.NEXT_PUBLIC_PROWLARR_API_KEY,
       hasTmdbApiKey: !!process.env.TMDB_API_KEY,
+      hasTmdbApiKeyPublic: !!process.env.NEXT_PUBLIC_TMDB_API_KEY,
     });
     
-    const prowlarrUrl = process.env.PROWLARR_URL || '';
-    const prowlarrApiKey = process.env.PROWLARR_API_KEY || '';
-    const tmdbApiKey = process.env.TMDB_API_KEY || '';
+    // Try both regular and NEXT_PUBLIC_ prefixed variables
+    const prowlarrUrl = process.env.PROWLARR_URL || process.env.NEXT_PUBLIC_PROWLARR_URL || '';
+    const prowlarrApiKey = process.env.PROWLARR_API_KEY || process.env.NEXT_PUBLIC_PROWLARR_API_KEY || '';
+    const tmdbApiKey = process.env.TMDB_API_KEY || process.env.NEXT_PUBLIC_TMDB_API_KEY || '';
     
     // Only initialize clients if API keys are available
     if (prowlarrUrl && prowlarrApiKey) {
