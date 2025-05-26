@@ -75,3 +75,16 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
+
+/* Custom styles for the featured content */
+@layer utilities {
+  /* Hide scrollbars while maintaining scroll functionality */
+  .hide-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+  }
+}
