@@ -35,6 +35,36 @@ export class CuratorService {
   }
   
   /**
+   * Force initialization with specific credentials
+   * This is useful for testing or when environment variables aren't available
+   * @param prowlarrUrl The Prowlarr URL
+   * @param prowlarrApiKey The Prowlarr API key
+   * @param tmdbApiKey The TMDb API key
+   */
+  static forceInitialize(prowlarrUrl: string, prowlarrApiKey: string, tmdbApiKey: string): void {
+    console.log('[CuratorService] Force initializing with provided credentials');
+    
+    // Initialize Prowlarr clients
+    if (prowlarrUrl && prowlarrApiKey) {
+      // First initialize the Prowlarr client
+      this.prowlarrClient = new TrendingContentClient(prowlarrUrl, prowlarrApiKey);
+      
+      // Then initialize the TrendingContentClient with the Prowlarr client instance
+      this.trendingClient = new TrendingContentClient(this.prowlarrClient);
+      
+      this.useRealData = true;
+      console.log('[CuratorService] ProwlarrClient and TrendingContentClient force initialized');
+    }
+    
+    // Initialize TMDb client
+    if (tmdbApiKey) {
+      this.tmdbClient = new MetadataEnricher(tmdbApiKey);
+      this.useTMDb = true;
+      console.log('[CuratorService] TMDbClient force initialized');
+    }
+  }
+  
+  /**
    * Utility method to clear all caches
    * This is useful for debugging and testing
    */
@@ -50,6 +80,13 @@ export class CuratorService {
    * This should be called before using any other methods
    */
   static initialize(): void {
+    // Log environment variables for debugging
+    console.log('[CuratorService] Environment variables check:', {
+      hasProwlarrUrl: !!process.env.PROWLARR_URL,
+      hasProwlarrApiKey: !!process.env.PROWLARR_API_KEY,
+      hasTmdbApiKey: !!process.env.TMDB_API_KEY,
+    });
+    
     const prowlarrUrl = process.env.PROWLARR_URL || '';
     const prowlarrApiKey = process.env.PROWLARR_API_KEY || '';
     const tmdbApiKey = process.env.TMDB_API_KEY || '';
