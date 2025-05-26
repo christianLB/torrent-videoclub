@@ -2,7 +2,10 @@
  * API route for featured content
  */
 import { NextResponse } from 'next/server';
-import { CuratorService } from '../../../lib/services/curator-service';
+import { CuratorService } from '@/lib/services/curator-service';
+
+// Import the initialization module to ensure the cache scheduler runs
+import { __init } from '@/app/api/_init';
 
 /**
  * GET handler for /api/featured
