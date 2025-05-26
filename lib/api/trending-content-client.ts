@@ -48,26 +48,44 @@ export class TrendingContentClient {
    * @returns List of trending movies
    */
   async getTrendingMovies(options: TrendingContentOptions = {}): Promise<NormalizedMovieResult[]> {
+    console.log('[TrendingContentClient] getTrendingMovies called with options:', options);
     const opts = { ...DEFAULT_OPTIONS, ...options };
     
     try {
       // Search for recent movies
       const searchTerm = this.generateRecentMovieSearchTerm();
-      console.log(`Searching for trending movies with term: ${searchTerm}`);
+      console.log(`[TrendingContentClient] Searching for trending movies with term: ${searchTerm}`);
       
       // Search movies using the client
+      console.log('[TrendingContentClient] About to call prowlarrClient.searchMovies');
       let results = await this.prowlarrClient.searchMovies(searchTerm);
+      console.log(`[TrendingContentClient] Received ${results.length} results from prowlarrClient.searchMovies`);
+      
+      if (results.length > 0) {
+        console.log('[TrendingContentClient] First result sample:', {
+          guid: results[0].guid.substring(0, 20) + '...',
+          title: results[0].title,
+          seeders: results[0].seeders
+        });
+      } else {
+        console.warn('[TrendingContentClient] No results returned from prowlarrClient.searchMovies');
+      }
       
       // Apply filters based on options
+      console.log(`[TrendingContentClient] Filtering ${results.length} results with options:`, opts);
       results = this.filterResults(results, opts);
+      console.log(`[TrendingContentClient] After filtering: ${results.length} results remain`);
       
       // Sort by seeders (descending)
       results.sort((a, b) => b.seeders - a.seeders);
+      console.log('[TrendingContentClient] Results sorted by seeders');
       
       // Limit results
-      return results.slice(0, opts.limit || DEFAULT_OPTIONS.limit!);
+      const limitedResults = results.slice(0, opts.limit || DEFAULT_OPTIONS.limit!);
+      console.log(`[TrendingContentClient] Returning ${limitedResults.length} trending movies`);
+      return limitedResults;
     } catch (error) {
-      console.error('Error getting trending movies:', error);
+      console.error('[TrendingContentClient] Error getting trending movies:', error);
       return [];
     }
   }

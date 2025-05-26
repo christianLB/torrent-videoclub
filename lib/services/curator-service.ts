@@ -27,6 +27,15 @@ export class CuratorService {
   private static useTMDb = true; // Set to true to enrich results with TMDb data
   
   /**
+   * Utility method to clear all caches
+   * This is useful for debugging and testing
+   */
+  static clearAllCaches(): void {
+    console.log('[CuratorService] Clearing all caches');
+    CacheService.clearFeaturedContentCache();
+  }
+  
+  /**
    * Initialize the Curator Service with the necessary API clients
    * This should be called before using any other methods
    */

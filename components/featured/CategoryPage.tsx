@@ -22,13 +22,30 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ categoryId }) => {
   const itemsPerPage = 20;
   
   useEffect(() => {
+    // Clear cache before fetching to ensure fresh data
+    // This is a temporary debugging step
+    CuratorService.clearAllCaches();
+    
     const fetchCategoryContent = async () => {
       try {
+        console.log(`[CategoryPage] Fetching category: ${categoryId}`);
         setIsLoading(true);
         const categoryData = await CuratorService.getCategory(categoryId);
+        console.log(`[CategoryPage] Received data for ${categoryId}:`, 
+          {
+            id: categoryData?.id,
+            title: categoryData?.title,
+            itemCount: categoryData?.items.length,
+            firstItem: categoryData?.items[0] ? {
+              title: categoryData.items[0].title,
+              guid: categoryData.items[0].guid.substring(0, 20) + '...',
+              hasTmdb: categoryData.items[0].tmdbAvailable
+            } : 'none'
+          }
+        );
         setCategory(categoryData);
       } catch (err) {
-        console.error(`Failed to fetch category ${categoryId}:`, err);
+        console.error(`[CategoryPage] Failed to fetch category ${categoryId}:`, err);
         setError(`Failed to load category content. Please try again later.`);
       } finally {
         setIsLoading(false);
