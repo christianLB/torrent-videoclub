@@ -25,13 +25,14 @@ export class CuratorService {
   // Configuration options
   private static useRealData = true; // Set to true to use real data, false to use mock data
   private static useTMDb = true; // Set to true to enrich results with TMDb data
+  private static initialized = false; // Track if service has been initialized
   
   /**
    * Check if the service is using real data or mock data
    * @returns true if using real data, false if using mock data
    */
   static isUsingRealData(): boolean {
-    return this.useRealData && !!this.prowlarrClient && !!this.trendingClient;
+    return this.initialized && this.useRealData && !!this.prowlarrClient && !!this.trendingClient;
   }
   
   /**
@@ -62,6 +63,10 @@ export class CuratorService {
       this.useTMDb = true;
       console.log('[CuratorService] TMDbClient force initialized');
     }
+    
+    // Mark as initialized
+    this.initialized = true;
+    console.log('[CuratorService] Force initialization complete, using real data:', this.useRealData);
   }
   
   /**
@@ -80,6 +85,12 @@ export class CuratorService {
    * This should be called before using any other methods
    */
   static initialize(): void {
+    // If already initialized, don't reinitialize
+    if (this.initialized) {
+      console.log('[CuratorService] Already initialized, skipping initialization');
+      return;
+    }
+    
     // Log environment variables for debugging
     console.log('[CuratorService] Environment variables check:', {
       hasProwlarrUrl: !!process.env.PROWLARR_URL,
@@ -100,9 +111,9 @@ export class CuratorService {
       this.trendingClient = new TrendingContentClient(this.prowlarrClient);
       
       this.useRealData = true;
-      console.log('ProwlarrClient and TrendingContentClient initialized successfully');
+      console.log('[CuratorService] ProwlarrClient and TrendingContentClient initialized successfully');
     } else {
-      console.warn('Prowlarr URL or API key not found, API clients not initialized');
+      console.warn('[CuratorService] Prowlarr URL or API key not found, API clients not initialized');
       this.useRealData = false;
     }
     
@@ -110,11 +121,15 @@ export class CuratorService {
     if (tmdbApiKey) {
       this.tmdbClient = new MetadataEnricher(tmdbApiKey);
       this.useTMDb = true;
-      console.log('TMDbClient initialized successfully');
+      console.log('[CuratorService] TMDbClient initialized successfully');
     } else {
-      console.warn('TMDb API key not found, TMDb client not initialized');
+      console.warn('[CuratorService] TMDb API key not found, TMDb client not initialized');
       this.useTMDb = false;
     }
+    
+    // Mark as initialized
+    this.initialized = true;
+    console.log('[CuratorService] Initialization complete, using real data:', this.useRealData);
   }
   /**
    * Get the featured content for the homepage
