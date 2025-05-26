@@ -3,7 +3,6 @@
  * 
  * A client for interacting with the Prowlarr API to search for torrents
  */
-import axios from 'axios';
 import { FeaturedItem } from '../types/featured';
 
 // Define the shape of a Prowlarr search result
@@ -51,28 +50,34 @@ export class ProwlarrClient {
         limit: params.limit
       });
       
-      // Construct the search URL
-      const searchUrl = `${this.apiUrl}/api/v1/search`;
-      
-      // Build query parameters
-      const queryParams = {
+      // Construct the search URL with query parameters
+      const queryString = new URLSearchParams({
         apikey: this.apiKey,
         query: params.query || '',
         categories: params.categories?.join(',') || '',
-        limit: params.limit || 100,
-        offset: params.offset || 0
-      };
+        limit: (params.limit || 100).toString(),
+        offset: (params.offset || 0).toString()
+      }).toString();
+      
+      const url = `${this.apiUrl}/api/v1/search?${queryString}`;
       
       // Make the request
-      const response = await axios.get(searchUrl, { params: queryParams });
+      const response = await fetch(url);
       
-      if (!response.data || !Array.isArray(response.data)) {
-        console.warn('[ProwlarrClient] Unexpected response format:', response.data);
+      if (!response.ok) {
+        console.warn(`[ProwlarrClient] API request failed: ${response.status} ${response.statusText}`);
+        return [];
+      }
+      
+      const data = await response.json();
+      
+      if (!Array.isArray(data)) {
+        console.warn('[ProwlarrClient] Unexpected response format:', data);
         return [];
       }
       
       // Filter results by minimum seeders if specified
-      let results = response.data as ProwlarrResult[];
+      let results = data as ProwlarrResult[];
       
       if (params.minSeeders && params.minSeeders > 0) {
         results = results.filter(result => result.seeders >= (params.minSeeders || 0));
