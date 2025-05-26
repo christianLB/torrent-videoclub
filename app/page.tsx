@@ -1,23 +1,11 @@
 import Link from "next/link";
 import FeaturedPage from "@/components/featured/FeaturedPage";
+import { Navbar } from "@/components/navbar";
 
 export default function Home() {
   return (
     <main className="bg-gray-900 text-white min-h-screen">
-      <div className="flex items-center justify-between p-4 border-b border-gray-800 mb-4">
-        <h1 className="text-2xl font-bold text-green-500">Torrent Videoclub</h1>
-        <div className="flex space-x-6">
-          <Link href="/movies" className="text-gray-300 hover:text-white transition-colors">
-            Películas
-          </Link>
-          <Link href="/series" className="text-gray-300 hover:text-white transition-colors">
-            Series
-          </Link>
-          <Link href="/search" className="text-gray-300 hover:text-white transition-colors">
-            Buscar
-          </Link>
-        </div>
-      </div>
+      <Navbar />
       
       {/* Featured Content Section */}
       <FeaturedPage />

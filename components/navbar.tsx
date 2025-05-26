@@ -9,8 +9,10 @@ export function Navbar() {
 
   const navigation = [
     { name: "Inicio", href: "/" },
+    { name: "Destacados", href: "/featured" },
     { name: "Películas", href: "/movies" },
     { name: "Series", href: "/series" },
+    { name: "Buscar", href: "/search" },
   ];
 
   return (
