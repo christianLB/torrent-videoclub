@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import { EnhancedMediaItem } from '@/lib/types/featured-content';
 import DownloadIndicator from './DownloadIndicator';
@@ -17,22 +17,50 @@ const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({ item }) => {
   const isInLibrary = item.inLibrary;
   const isDownloading = item.downloading;
   const downloadProgress = item.downloadProgress;
+  
+  // State to track when the high-quality image has loaded
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [smallImageLoaded, setSmallImageLoaded] = useState(false);
 
   return (
     <div className="relative w-full h-[400px] overflow-hidden rounded-lg bg-gray-900">
       {/* Backdrop Image with gradient overlay */}
       <div className="absolute inset-0">
         {backdropPath && (
-          <Image
-            src={backdropPath.startsWith('/') 
-              ? `https://image.tmdb.org/t/p/original${backdropPath}` 
-              : backdropPath}
-            alt={title}
-            fill
-            style={{ objectFit: 'cover' }}
-            priority
-            className="opacity-50"
-          />
+          <>
+            {/* Loading skeleton/pulse animation */}
+            <div className={`absolute inset-0 bg-gray-900 transition-opacity duration-500 ${smallImageLoaded ? 'opacity-0' : 'opacity-100'}`}>
+              <div className="animate-pulse w-full h-full bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900"></div>
+            </div>
+            
+            {/* Low quality placeholder image (loads first) */}
+            <Image
+              src={backdropPath.startsWith('/') 
+                ? `https://image.tmdb.org/t/p/w300${backdropPath}` 
+                : backdropPath}
+              alt={`${title} small backdrop`}
+              fill
+              style={{ objectFit: 'cover' }}
+              onLoad={() => setSmallImageLoaded(true)}
+              className={`transition-opacity duration-300 opacity-50 ${smallImageLoaded ? 'opacity-50' : 'opacity-0'} ${imageLoaded ? 'opacity-0' : 'opacity-50'}`}
+              priority
+            />
+            
+            {/* High quality final image (loads after) */}
+            <Image
+              src={backdropPath.startsWith('/') 
+                ? `https://image.tmdb.org/t/p/w1280${backdropPath}` /* Using w1280 instead of original for better performance */
+                : backdropPath}
+              alt={title}
+              fill
+              style={{ objectFit: 'cover' }}
+              onLoad={() => setImageLoaded(true)}
+              className={`transition-opacity duration-500 opacity-50 ${imageLoaded ? 'opacity-50' : 'opacity-0'}`}
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 100vw, 100vw" /* Optimize rendering sizes */
+              priority={false}
+              loading="eager" /* Still load this somewhat eagerly as it's the hero image */
+            />
+          </>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/80 to-transparent" />
       </div>

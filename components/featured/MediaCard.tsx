@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import { EnhancedMediaItem } from '@/lib/types/featured-content';
 import DownloadIndicator from './DownloadIndicator';
@@ -17,21 +17,34 @@ const MediaCard: React.FC<MediaCardProps> = ({ item }) => {
   const isDownloading = item.downloading;
   const downloadProgress = item.downloadProgress;
   const seeders = item.seeders;
+  
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   return (
     <div className="group relative w-[180px] flex-shrink-0 transition-transform duration-300 hover:scale-105">
       {/* Poster Image */}
       <div className="relative w-full h-[270px] rounded-md overflow-hidden bg-gray-800">
         {posterPath ? (
-          <Image
-            src={posterPath.startsWith('/') 
-              ? `https://image.tmdb.org/t/p/w500${posterPath}` 
-              : posterPath}
-            alt={title}
-            fill
-            style={{ objectFit: 'cover' }}
-            className="group-hover:opacity-80 transition-opacity"
-          />
+          <>
+            {/* Loading skeleton */}
+            <div className={`absolute inset-0 bg-gray-800 flex items-center justify-center transition-opacity duration-300 ${imageLoaded ? 'opacity-0' : 'opacity-100'}`}>
+              <div className="w-12 h-12 rounded-full border-2 border-t-transparent border-green-500 animate-spin"></div>
+            </div>
+            
+            <Image
+              src={posterPath.startsWith('/') 
+                ? `https://image.tmdb.org/t/p/w342${posterPath}` /* Using w342 size which is more appropriate for cards */
+                : posterPath}
+              alt={title}
+              fill
+              sizes="(max-width: 768px) 30vw, 180px" /* Optimize rendering sizes */
+              priority={false} /* Enable lazy loading */
+              loading="lazy"
+              onLoad={() => setImageLoaded(true)}
+              style={{ objectFit: 'cover' }}
+              className={`group-hover:opacity-80 transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+            />
+          </>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-800 text-gray-500">
             No Image
