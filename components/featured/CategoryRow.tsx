@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import { FeaturedCategory } from '@/lib/types/featured-content';
 import MediaCard from './MediaCard';
 
@@ -11,9 +12,15 @@ const CategoryRow: React.FC<CategoryRowProps> = ({ category }) => {
     <section className="mb-8">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-white">{category.title}</h2>
-        <button className="text-sm text-gray-400 hover:text-white transition-colors">
+        <Link 
+          href={`/category/${category.id}`} 
+          className="text-sm text-gray-400 hover:text-white transition-colors flex items-center"
+        >
           See All
-        </button>
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </Link>
       </div>
       
       {/* Scrollable row of media cards */}
