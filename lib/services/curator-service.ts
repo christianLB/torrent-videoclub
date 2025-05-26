@@ -117,8 +117,204 @@ export class CuratorService {
    */
   static async getCategory(categoryId: string): Promise<FeaturedCategory | null> {
     try {
+      // Make sure the service is initialized
+      this.initialize();
+      
+      // First check if category exists in cached content
+      const cachedContent = CacheService.getCachedFeaturedContent();
+      if (cachedContent) {
+        const cachedCategory = cachedContent.categories.find(category => category.id === categoryId);
+        if (cachedCategory && cachedCategory.items.length > 0) {
+          console.log(`Retrieved category '${categoryId}' from cache`);
+          return cachedCategory;
+        }
+      }
+      
+      console.log(`Cache miss for category '${categoryId}' - fetching directly`);
+      
+      // If category not found in cache, we'll try to fetch it directly based on category ID
+      if (this.useRealData && this.trendingClient) {
+        try {
+          console.log(`Fetching category '${categoryId}' directly using real data`);
+          
+          // Fetch data based on category ID
+          let items: EnhancedMediaItem[] = [];
+          let title = 'Unknown Category';
+          
+          // Determine which data to fetch based on category ID
+          switch (categoryId) {
+            case CONTENT_CATEGORIES.TRENDING_MOVIES:
+              title = 'Trending Movies';
+              const trendingMovies = await this.trendingClient.getTrendingMovies({ limit: 50 });
+              
+              // Enrich with TMDb data if available
+              if (this.useTMDb) {
+                console.log('Enriching trending movies with TMDb metadata');
+                items = await Promise.all(
+                  trendingMovies.map(async (movie) => {
+                    try {
+                      const enriched = await MetadataEnricher.enrichMovie(movie);
+                      enriched.inLibrary = this.isInLibrary(movie.guid);
+                      const downloadStatus = this.isDownloading(movie.guid);
+                      enriched.downloading = downloadStatus.downloading;
+                      enriched.downloadProgress = downloadStatus.progress;
+                      return enriched;
+                    } catch (err) {
+                      console.error('Error enriching movie:', err);
+                      return {
+                        ...movie,
+                        inLibrary: this.isInLibrary(movie.guid),
+                        downloading: this.isDownloading(movie.guid).downloading,
+                        downloadProgress: this.isDownloading(movie.guid).progress,
+                        tmdbAvailable: false
+                      };
+                    }
+                  })
+                );
+              } else {
+                items = trendingMovies.map(movie => ({
+                  ...movie,
+                  inLibrary: this.isInLibrary(movie.guid),
+                  downloading: this.isDownloading(movie.guid).downloading,
+                  downloadProgress: this.isDownloading(movie.guid).progress,
+                  tmdbAvailable: false
+                }));
+              }
+              break;
+              
+            case CONTENT_CATEGORIES.POPULAR_TV:
+              title = 'Popular TV Shows';
+              const popularTV = await this.trendingClient.getPopularTV({ limit: 50 });
+              
+              // Enrich with TMDb data if available
+              if (this.useTMDb) {
+                console.log('Enriching TV shows with TMDb metadata');
+                items = await Promise.all(
+                  popularTV.map(async (show) => {
+                    try {
+                      const enriched = await MetadataEnricher.enrichTVSeries(show);
+                      enriched.inLibrary = this.isInLibrary(show.guid);
+                      const downloadStatus = this.isDownloading(show.guid);
+                      enriched.downloading = downloadStatus.downloading;
+                      enriched.downloadProgress = downloadStatus.progress;
+                      return enriched;
+                    } catch (err) {
+                      console.error('Error enriching TV show:', err);
+                      return {
+                        ...show,
+                        inLibrary: this.isInLibrary(show.guid),
+                        downloading: this.isDownloading(show.guid).downloading,
+                        downloadProgress: this.isDownloading(show.guid).progress,
+                        tmdbAvailable: false
+                      };
+                    }
+                  })
+                );
+              } else {
+                items = popularTV.map(show => ({
+                  ...show,
+                  inLibrary: this.isInLibrary(show.guid),
+                  downloading: this.isDownloading(show.guid).downloading,
+                  downloadProgress: this.isDownloading(show.guid).progress,
+                  tmdbAvailable: false
+                }));
+              }
+              break;
+              
+            case CONTENT_CATEGORIES.NEW_RELEASES:
+              title = 'New Releases';
+              const newReleases = await this.trendingClient.getNewReleases({ limit: 50 });
+              
+              // Enrich with TMDb data if available
+              if (this.useTMDb) {
+                console.log('Enriching new releases with TMDb metadata');
+                items = await Promise.all(
+                  newReleases.map(async (movie) => {
+                    try {
+                      const enriched = await MetadataEnricher.enrichMovie(movie);
+                      enriched.inLibrary = this.isInLibrary(movie.guid);
+                      const downloadStatus = this.isDownloading(movie.guid);
+                      enriched.downloading = downloadStatus.downloading;
+                      enriched.downloadProgress = downloadStatus.progress;
+                      return enriched;
+                    } catch (err) {
+                      console.error('Error enriching new release:', err);
+                      return {
+                        ...movie,
+                        inLibrary: this.isInLibrary(movie.guid),
+                        downloading: this.isDownloading(movie.guid).downloading,
+                        downloadProgress: this.isDownloading(movie.guid).progress,
+                        tmdbAvailable: false
+                      };
+                    }
+                  })
+                );
+              } else {
+                items = newReleases.map(movie => ({
+                  ...movie,
+                  inLibrary: this.isInLibrary(movie.guid),
+                  downloading: this.isDownloading(movie.guid).downloading,
+                  downloadProgress: this.isDownloading(movie.guid).progress,
+                  tmdbAvailable: false
+                }));
+              }
+              break;
+              
+            default:
+              console.warn(`Unknown category ID: ${categoryId}`);
+              break;
+          }
+          
+          // If we successfully fetched items, return the category
+          if (items.length > 0) {
+            const category: FeaturedCategory = {
+              id: categoryId,
+              title,
+              items
+            };
+            
+            // Cache this individual category to avoid refetching
+            if (cachedContent) {
+              // Update the category in the cached content
+              const updatedCategories = cachedContent.categories.map(c => 
+                c.id === categoryId ? category : c
+              );
+              
+              // If the category doesn't exist in the cache, add it
+              if (!updatedCategories.some(c => c.id === categoryId)) {
+                updatedCategories.push(category);
+              }
+              
+              // Update the cache
+              const updatedContent = {
+                ...cachedContent,
+                categories: updatedCategories
+              };
+              
+              CacheService.cacheFeaturedContent(updatedContent);
+            }
+            
+            return category;
+          }
+        } catch (fetchError) {
+          console.error(`Error directly fetching category '${categoryId}':`, fetchError);
+          // Will continue to fallback methods below
+        }
+      }
+      
+      // Fallback: try getting the category from the full featured content
+      console.log(`Falling back to getting category '${categoryId}' from full featured content`);
       const { categories } = await CuratorService.getFeaturedContent();
-      return categories.find(category => category.id === categoryId) || null;
+      const foundCategory = categories.find(category => category.id === categoryId);
+      
+      if (foundCategory) {
+        return foundCategory;
+      }
+      
+      // Final fallback: use mock data
+      console.log(`Category '${categoryId}' not found in real data, checking mock data`);
+      const mockData = getMockFeaturedContent();
+      return mockData.categories.find(category => category.id === categoryId) || null;
     } catch (error) {
       console.error(`Error in CuratorService.getCategory(${categoryId}):`, error);
       throw new Error(`Failed to fetch category: ${categoryId}`);
