@@ -22,15 +22,23 @@ export class TrendingContentClient {
    * Constructor can accept either:
    * 1. A ProwlarrClient instance
    * 2. API URL and key to create a new ProwlarrClient
+   * 3. Another TrendingContentClient instance (for backward compatibility)
    */
-  constructor(prowlarrClientOrUrl: ProwlarrClient | string, apiKey?: string) {
+  constructor(prowlarrClientOrUrl: ProwlarrClient | string | TrendingContentClient, apiKey?: string) {
     if (typeof prowlarrClientOrUrl === 'string' && apiKey) {
       // Create a new ProwlarrClient with the provided URL and API key
       this.prowlarrClient = new ProwlarrClient(prowlarrClientOrUrl, apiKey);
+      console.log('[TrendingContentClient] Initialized with URL and API key');
     } else if (prowlarrClientOrUrl instanceof ProwlarrClient) {
       // Use the provided ProwlarrClient instance
       this.prowlarrClient = prowlarrClientOrUrl;
+      console.log('[TrendingContentClient] Initialized with ProwlarrClient instance');
+    } else if (prowlarrClientOrUrl instanceof TrendingContentClient) {
+      // Use the ProwlarrClient from another TrendingContentClient (for backward compatibility)
+      this.prowlarrClient = prowlarrClientOrUrl.prowlarrClient;
+      console.log('[TrendingContentClient] Initialized with another TrendingContentClient instance');
     } else {
+      console.error('[TrendingContentClient] Invalid constructor arguments:', typeof prowlarrClientOrUrl);
       throw new Error('Invalid constructor arguments for TrendingContentClient');
     }
   }
