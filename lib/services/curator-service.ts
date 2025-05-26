@@ -7,6 +7,7 @@
  */
 import { getMockFeaturedContent } from './mock-data';
 import { FeaturedContent, EnhancedMediaItem, FeaturedCategory } from '../types/featured-content';
+import { CacheService } from './cache-service';
 
 /**
  * Service for curating and providing featured content
@@ -15,21 +16,43 @@ export class CuratorService {
   /**
    * Get the featured content for the homepage
    * 
+   * Uses caching to improve performance and reduce API calls
    * In this first iteration, we're using mock data
    * In future iterations, this will use real data from Prowlarr and TMDb
    */
   static async getFeaturedContent(): Promise<FeaturedContent> {
     try {
+      // First check if we have valid cached content
+      const cachedContent = CacheService.getCachedFeaturedContent();
+      if (cachedContent) {
+        console.log('Using cached featured content');
+        return cachedContent;
+      }
+
+      console.log('Cache miss - fetching fresh featured content');
+      
       // For the initial implementation, we're using static mock data
       // In a future version, this would:
       // 1. Fetch trending content from Prowlarr based on configuration
       // 2. Enrich with TMDb metadata
       // 3. Get library status from Radarr/Sonarr
       // 4. Cache the results
+      const featuredContent = getMockFeaturedContent();
       
-      return getMockFeaturedContent();
+      // Cache the results for future use
+      CacheService.cacheFeaturedContent(featuredContent);
+      
+      return featuredContent;
     } catch (error) {
       console.error('Error in CuratorService.getFeaturedContent:', error);
+      
+      // If there's an error, try to use cached content as a fallback
+      const cachedContent = CacheService.getCachedFeaturedContent();
+      if (cachedContent) {
+        console.log('Using cached content as fallback after error');
+        return cachedContent;
+      }
+      
       throw new Error('Failed to fetch featured content');
     }
   }
@@ -106,5 +129,27 @@ export class CuratorService {
     }
     
     return { downloading: false };
+  }
+
+  /**
+   * Fetch fresh featured content, bypassing the cache
+   * This is used by the cache refresh service to update the cache
+   */
+  static async fetchFreshFeaturedContent(): Promise<FeaturedContent> {
+    try {
+      // For the initial implementation, we're using static mock data
+      // In a future version, this would actually fetch from real APIs:
+      // 1. Fetch trending content from Prowlarr based on configuration
+      // 2. Enrich with TMDb metadata
+      // 3. Get library status from Radarr/Sonarr
+      
+      // Simulate a network delay to mimic real API calls
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      return getMockFeaturedContent();
+    } catch (error) {
+      console.error('Error fetching fresh featured content:', error);
+      throw new Error('Failed to fetch fresh featured content');
+    }
   }
 }

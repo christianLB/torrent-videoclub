@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import FeaturedCarousel from './FeaturedCarousel';
 import CategoryRow from './CategoryRow';
 import { FeaturedContent } from '@/lib/types/featured-content';
+import { CacheRefreshService } from '@/lib/services/cache-refresh-service';
 
 const FeaturedPage: React.FC = () => {
   const [featuredContent, setFeaturedContent] = useState<FeaturedContent | null>(null);
@@ -30,6 +31,15 @@ const FeaturedPage: React.FC = () => {
     };
 
     fetchFeaturedContent();
+    
+    // Start background refresh service - refresh every 30 minutes
+    const REFRESH_INTERVAL = 1000 * 60 * 30; // 30 minutes
+    CacheRefreshService.startFeaturedContentRefresh(REFRESH_INTERVAL);
+    
+    // Clean up on component unmount
+    return () => {
+      CacheRefreshService.stopFeaturedContentRefresh();
+    };
   }, []);
 
   // Loading state
