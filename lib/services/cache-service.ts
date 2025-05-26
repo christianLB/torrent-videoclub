@@ -3,17 +3,28 @@ import { FeaturedContent } from "../types/featured-content";
 /**
  * Constants for cache keys and expiration times
  */
-const CACHE_KEYS = {
+export const CACHE_KEYS = {
   FEATURED_CONTENT: 'featured_content',
 };
 
-const CACHE_EXPIRATION = {
+export const CACHE_EXPIRATION = {
   FEATURED_CONTENT: 1000 * 60 * 60, // 1 hour in milliseconds
 };
 
+// Memory cache for server-side environments
+let memoryCache: Record<string, any> = {};
+
 /**
- * Cache service for managing browser storage of application data
- * Uses localStorage for persistence between sessions
+ * Check if running in browser environment
+ * This is needed because localStorage is only available in browser
+ */
+const isBrowser = (): boolean => {
+  return typeof window !== 'undefined';
+};
+
+/**
+ * Cache service for managing storage of application data
+ * Uses localStorage in browser and memory cache on server
  */
 export class CacheService {
   /**
@@ -26,10 +37,16 @@ export class CacheService {
         timestamp: Date.now(),
       };
       
-      localStorage.setItem(
-        CACHE_KEYS.FEATURED_CONTENT, 
-        JSON.stringify(cacheItem)
-      );
+      if (isBrowser()) {
+        // Browser environment - use localStorage
+        localStorage.setItem(
+          CACHE_KEYS.FEATURED_CONTENT, 
+          JSON.stringify(cacheItem)
+        );
+      } else {
+        // Server environment - use memory cache
+        memoryCache[CACHE_KEYS.FEATURED_CONTENT] = cacheItem;
+      }
       
       console.log('Featured content cached successfully');
     } catch (error) {
@@ -43,13 +60,24 @@ export class CacheService {
    */
   static getCachedFeaturedContent(): FeaturedContent | null {
     try {
-      const cachedData = localStorage.getItem(CACHE_KEYS.FEATURED_CONTENT);
+      let cacheItem: { data: FeaturedContent, timestamp: number } | null = null;
       
-      if (!cachedData) {
+      if (isBrowser()) {
+        // Browser environment - use localStorage
+        const cachedData = localStorage.getItem(CACHE_KEYS.FEATURED_CONTENT);
+        if (cachedData) {
+          cacheItem = JSON.parse(cachedData);
+        }
+      } else {
+        // Server environment - use memory cache
+        cacheItem = memoryCache[CACHE_KEYS.FEATURED_CONTENT] || null;
+      }
+      
+      if (!cacheItem) {
         return null;
       }
       
-      const { data, timestamp } = JSON.parse(cachedData);
+      const { data, timestamp } = cacheItem;
       const now = Date.now();
       
       // Check if cache is expired
@@ -71,7 +99,13 @@ export class CacheService {
    */
   static clearFeaturedContentCache(): void {
     try {
-      localStorage.removeItem(CACHE_KEYS.FEATURED_CONTENT);
+      if (isBrowser()) {
+        // Browser environment - use localStorage
+        localStorage.removeItem(CACHE_KEYS.FEATURED_CONTENT);
+      } else {
+        // Server environment - use memory cache
+        delete memoryCache[CACHE_KEYS.FEATURED_CONTENT];
+      }
       console.log('Featured content cache cleared');
     } catch (error) {
       console.error('Failed to clear featured content cache:', error);
@@ -83,13 +117,24 @@ export class CacheService {
    */
   static isFeaturedContentCacheValid(): boolean {
     try {
-      const cachedData = localStorage.getItem(CACHE_KEYS.FEATURED_CONTENT);
+      let cacheItem: { data: FeaturedContent, timestamp: number } | null = null;
       
-      if (!cachedData) {
+      if (isBrowser()) {
+        // Browser environment - use localStorage
+        const cachedData = localStorage.getItem(CACHE_KEYS.FEATURED_CONTENT);
+        if (cachedData) {
+          cacheItem = JSON.parse(cachedData);
+        }
+      } else {
+        // Server environment - use memory cache
+        cacheItem = memoryCache[CACHE_KEYS.FEATURED_CONTENT] || null;
+      }
+      
+      if (!cacheItem) {
         return false;
       }
       
-      const { timestamp } = JSON.parse(cachedData);
+      const { timestamp } = cacheItem;
       const now = Date.now();
       
       return (now - timestamp) <= CACHE_EXPIRATION.FEATURED_CONTENT;
@@ -105,13 +150,24 @@ export class CacheService {
    */
   static getFeaturedContentCacheTimeRemaining(): number {
     try {
-      const cachedData = localStorage.getItem(CACHE_KEYS.FEATURED_CONTENT);
+      let cacheItem: { data: FeaturedContent, timestamp: number } | null = null;
       
-      if (!cachedData) {
+      if (isBrowser()) {
+        // Browser environment - use localStorage
+        const cachedData = localStorage.getItem(CACHE_KEYS.FEATURED_CONTENT);
+        if (cachedData) {
+          cacheItem = JSON.parse(cachedData);
+        }
+      } else {
+        // Server environment - use memory cache
+        cacheItem = memoryCache[CACHE_KEYS.FEATURED_CONTENT] || null;
+      }
+      
+      if (!cacheItem) {
         return 0;
       }
       
-      const { timestamp } = JSON.parse(cachedData);
+      const { timestamp } = cacheItem;
       const now = Date.now();
       const elapsed = now - timestamp;
       
