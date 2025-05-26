@@ -2,13 +2,14 @@
 import React, { useEffect, useState } from 'react';
 import FeaturedCarousel from './FeaturedCarousel';
 import CategoryRow from './CategoryRow';
-import { FeaturedContent } from '@/lib/types/featured-content';
-import { CacheRefreshService } from '@/lib/services/cache-refresh-service';
+import { FeaturedContent, FeaturedItem, FeaturedCategory } from '@/lib/types/featured';
+import { useCacheRefresh } from '@/lib/hooks/use-cache-refresh';
 
 const FeaturedPage: React.FC = () => {
   const [featuredContent, setFeaturedContent] = useState<FeaturedContent | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { triggerBackgroundRefresh } = useCacheRefresh();
 
   useEffect(() => {
     const fetchFeaturedContent = async () => {
@@ -32,15 +33,19 @@ const FeaturedPage: React.FC = () => {
 
     fetchFeaturedContent();
     
-    // Start background refresh service - refresh every 30 minutes
-    const REFRESH_INTERVAL = 1000 * 60 * 30; // 30 minutes
-    CacheRefreshService.startFeaturedContentRefresh(REFRESH_INTERVAL);
+    // Trigger a background refresh when the component mounts
+    triggerBackgroundRefresh();
+    
+    // Set up an interval to trigger background refreshes
+    const refreshInterval = setInterval(() => {
+      triggerBackgroundRefresh();
+    }, 1000 * 60 * 30); // 30 minutes
     
     // Clean up on component unmount
     return () => {
-      CacheRefreshService.stopFeaturedContentRefresh();
+      clearInterval(refreshInterval);
     };
-  }, []);
+  }, [triggerBackgroundRefresh]); // Include triggerBackgroundRefresh in deps array
 
   // Loading state
   if (isLoading) {

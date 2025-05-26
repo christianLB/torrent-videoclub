@@ -6,7 +6,7 @@
  * movies and TV shows.
  */
 
-import { EnhancedMediaItem } from '../types/featured-content';
+import { EnhancedMediaItem } from '../types/featured';
 import { TMDbClient, TMDbSearchResult, TMDbMovieDetails, TMDbTvShowDetails } from '../api/tmdb-client';
 import { NormalizedMovieResult } from '../api/prowlarr-client';
 
@@ -68,19 +68,32 @@ export class MetadataEnricher {
         const bestMatch = this.findBestMatch(resultsToUse, item.title);
         const movieDetails = await this.tmdbClient.getMovieDetails(bestMatch.id);
         
+        // Extract year from release date if available
+        const year = movieDetails?.releaseDate 
+          ? parseInt(movieDetails.releaseDate.substring(0, 4), 10) 
+          : (item.year || new Date().getFullYear());
+
         // Create the enhanced item with TMDb metadata
         return {
-          ...item,
+          id: item.guid || `movie-${Date.now()}`,
+          title: movieDetails?.title || bestMatch.title || item.title,
+          overview: movieDetails?.overview || bestMatch.overview || item.title,
+          backdropPath: movieDetails?.backdropPath || bestMatch.backdropPath || '/api/placeholder/1920/1080',
+          posterPath: movieDetails?.posterPath || bestMatch.posterPath || '/api/placeholder/500/750',
+          mediaType: 'movie',
+          rating: movieDetails?.voteAverage || bestMatch.voteAverage || 0,
+          year,
+          genres: movieDetails?.genres?.map((g: { name: string }) => g.name) || [],
+          runtime: movieDetails?.runtime || 0,
           inLibrary: false,
           downloading: false,
           tmdbAvailable: true,
+          tmdbId: bestMatch.id,
           tmdb: {
             id: bestMatch.id,
             title: movieDetails?.title || bestMatch.title,
             releaseDate: movieDetails?.releaseDate || bestMatch.releaseDate,
-            year: movieDetails?.releaseDate 
-              ? parseInt(movieDetails.releaseDate.substring(0, 4), 10) 
-              : item.year,
+            year,
             posterPath: movieDetails?.posterPath || bestMatch.posterPath,
             backdropPath: movieDetails?.backdropPath || bestMatch.backdropPath,
             voteAverage: movieDetails?.voteAverage || bestMatch.voteAverage,
@@ -121,19 +134,32 @@ export class MetadataEnricher {
         const bestMatch = this.findBestMatch(searchResults, item.title);
         const tvDetails = await this.tmdbClient.getTvShowDetails(bestMatch.id);
         
+        // Extract year from first air date if available
+        const year = tvDetails?.firstAirDate 
+          ? parseInt(tvDetails.firstAirDate.substring(0, 4), 10) 
+          : (item.year || new Date().getFullYear());
+
         // Create the enhanced item with TMDb metadata
         return {
-          ...item,
+          id: item.guid || `tv-${Date.now()}`,
+          title: tvDetails?.name || bestMatch.name || item.title,
+          overview: tvDetails?.overview || bestMatch.overview || item.title,
+          backdropPath: tvDetails?.backdropPath || bestMatch.backdropPath || '/api/placeholder/1920/1080',
+          posterPath: tvDetails?.posterPath || bestMatch.posterPath || '/api/placeholder/500/750',
+          mediaType: 'tv',
+          rating: tvDetails?.voteAverage || bestMatch.voteAverage || 0,
+          year,
+          genres: tvDetails?.genres?.map((g: { name: string }) => g.name) || [],
+          seasons: tvDetails?.number_of_seasons || 1,
           inLibrary: false,
           downloading: false,
           tmdbAvailable: true,
+          tmdbId: bestMatch.id,
           tmdb: {
             id: bestMatch.id,
-            title: tvDetails?.name || bestMatch.title,
-            releaseDate: tvDetails?.releaseDate || bestMatch.releaseDate,
-            year: tvDetails?.releaseDate 
-              ? parseInt(tvDetails.releaseDate.substring(0, 4), 10) 
-              : item.year,
+            title: tvDetails?.name || bestMatch.name,
+            releaseDate: tvDetails?.firstAirDate || bestMatch.firstAirDate,
+            year,
             posterPath: tvDetails?.posterPath || bestMatch.posterPath,
             backdropPath: tvDetails?.backdropPath || bestMatch.backdropPath,
             voteAverage: tvDetails?.voteAverage || bestMatch.voteAverage,
@@ -160,7 +186,15 @@ export class MetadataEnricher {
    */
   private static createBasicEnhancedItem(item: NormalizedMovieResult): EnhancedMediaItem {
     return {
-      ...item,
+      id: item.guid || `movie-${Date.now()}`,
+      title: item.title,
+      overview: item.title, // Use title as fallback overview
+      backdropPath: '/api/placeholder/1920/1080', // Placeholder path
+      posterPath: '/api/placeholder/500/750', // Placeholder path
+      mediaType: 'movie', // Default to movie
+      rating: 0,
+      year: item.year || new Date().getFullYear(),
+      genres: [],
       inLibrary: false,
       downloading: false,
       tmdbAvailable: false

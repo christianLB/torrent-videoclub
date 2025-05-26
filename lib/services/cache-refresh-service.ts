@@ -3,9 +3,11 @@
  * 
  * Handles background refresh of cached content to ensure data is up-to-date
  * while maintaining fast performance for users.
+ * 
+ * This is a client-safe service that uses the CacheAPIClient to trigger
+ * cache refreshes without directly importing server-only modules.
  */
-import { CuratorService } from './curator-service';
-import { CacheService } from './cache-service';
+import { CacheAPIClient } from './cache-api-client';
 
 export class CacheRefreshService {
   private static refreshIntervalId: NodeJS.Timeout | null = null;
@@ -46,11 +48,12 @@ export class CacheRefreshService {
    */
   static async refreshFeaturedContent(): Promise<void> {
     try {
-      // Force fetch fresh content
-      const freshContent = await CuratorService.fetchFreshFeaturedContent();
+      // Use the client-safe API client to trigger a refresh
+      const result = await CacheAPIClient.refreshFeaturedContent();
       
-      // Update the cache
-      CacheService.cacheFeaturedContent(freshContent);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to refresh featured content');
+      }
       
       console.log('Featured content refreshed successfully');
     } catch (error) {

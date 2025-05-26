@@ -1,16 +1,16 @@
 /**
- * Curator Service
+ * CuratorService manages and provides featured content for the application
  * 
- * Responsible for managing and providing featured content for the application.
- * This service integrates with Prowlarr to fetch real trending content data
- * while maintaining mock data as a fallback option.
+ * This service is responsible for curating content that appears in the featured section,
+ * integrating with both Prowlarr (for torrent data) and TMDb (for metadata enrichment).
+ * 
+ * It uses a caching strategy to minimize API calls and ensure fast response times.
  */
-import { getMockFeaturedContent } from './mock-data';
-import { FeaturedContent, EnhancedMediaItem, FeaturedCategory } from '../types/featured-content';
+import { getMockFeaturedContent, CONTENT_CATEGORIES } from '../data/mock-featured';
+import { FeaturedContent, FeaturedCategory, FeaturedItem, EnhancedMediaItem } from '../types/featured';
 import { CacheService } from './cache-service';
-import { ProwlarrClient } from '../api/prowlarr-client';
-import { TrendingContentClient, CONTENT_CATEGORIES } from '../api/trending-content-client';
-import { TMDbClient } from '../api/tmdb-client';
+import { redisService } from './server/redis-service';
+import { TrendingContentClient } from './trending-content-client';
 import { MetadataEnricher } from './metadata-enricher';
 
 /**
@@ -18,9 +18,9 @@ import { MetadataEnricher } from './metadata-enricher';
  */
 export class CuratorService {
   // API client instances
-  private static prowlarrClient: ProwlarrClient | null = null;
+  private static prowlarrClient: TrendingContentClient | null = null;
   private static trendingClient: TrendingContentClient | null = null;
-  private static tmdbClient: TMDbClient | null = null;
+  private static tmdbClient: any | null = null;
   
   // Configuration options
   private static useRealData = true; // Set to true to use real data, false to use mock data
@@ -30,9 +30,11 @@ export class CuratorService {
    * Utility method to clear all caches
    * This is useful for debugging and testing
    */
-  static clearAllCaches(): void {
+  static async clearCache(): Promise<void> {
     console.log('[CuratorService] Clearing all caches');
+    // Clear both legacy cache and Redis cache
     CacheService.clearFeaturedContentCache();
+    await redisService.deletePattern('featured:*');
   }
   
   /**
@@ -47,7 +49,7 @@ export class CuratorService {
     // Only initialize clients if API keys are available
     if (prowlarrUrl && prowlarrApiKey) {
       // First initialize the Prowlarr client
-      this.prowlarrClient = new ProwlarrClient(prowlarrUrl, prowlarrApiKey);
+      this.prowlarrClient = new TrendingContentClient(prowlarrUrl, prowlarrApiKey);
       
       // Then initialize the TrendingContentClient with the Prowlarr client instance
       this.trendingClient = new TrendingContentClient(this.prowlarrClient);
@@ -61,24 +63,18 @@ export class CuratorService {
     
     // Initialize TMDb client
     if (tmdbApiKey) {
-      this.tmdbClient = new TMDbClient(tmdbApiKey);
+      this.tmdbClient = new MetadataEnricher(tmdbApiKey);
       this.useTMDb = true;
       console.log('TMDbClient initialized successfully');
-      
-      // Initialize the MetadataEnricher with the TMDb client
-      MetadataEnricher.initialize(this.tmdbClient);
     } else {
       console.warn('TMDb API key not found, TMDb client not initialized');
       this.useTMDb = false;
-      
-      // Initialize the MetadataEnricher without a TMDb client (will use mock data)
-      MetadataEnricher.initialize();
     }
   }
   /**
    * Get the featured content for the homepage
    * 
-   * Uses caching to improve performance and reduce API calls
+   * Uses Redis caching to improve performance and reduce API calls
    * If real data integration is enabled, fetches from Prowlarr and TMDb
    * Falls back to mock data if real data is unavailable
    */
@@ -87,21 +83,37 @@ export class CuratorService {
       // Make sure the service is initialized
       this.initialize();
       
-      // First check if we have valid cached content
-      const cachedContent = CacheService.getCachedFeaturedContent();
-      if (cachedContent) {
-        console.log('Using cached featured content');
-        return cachedContent;
+      // First check Redis cache
+      const redisKey = 'featured:content';
+      const redisCachedContent = await redisService.get<FeaturedContent>(redisKey);
+      
+      if (redisCachedContent) {
+        console.log('[CuratorService] Using Redis cached featured content');
+        return redisCachedContent;
+      }
+      
+      // Then check legacy cache as fallback
+      const legacyCachedContent = CacheService.getCachedFeaturedContent();
+      if (legacyCachedContent) {
+        console.log('[CuratorService] Using legacy cached featured content');
+        // Store in Redis for next time
+        await redisService.set(redisKey, legacyCachedContent, 
+          parseInt(process.env.REDIS_FEATURED_CONTENT_TTL || '3600')
+        );
+        return legacyCachedContent;
       }
 
-      console.log('Cache miss - fetching fresh featured content');
+      console.log('[CuratorService] Cache miss - fetching fresh featured content');
       
       // Fetch fresh content using real APIs when available
       // This method will fallback to mock data if needed
       const featuredContent = await this.fetchFreshFeaturedContent();
       
-      // Cache the results for future use
-      CacheService.cacheFeaturedContent(featuredContent);
+      // Cache the results in both systems
+      CacheService.cacheFeaturedContent(featuredContent); // Legacy cache
+      await redisService.set(redisKey, featuredContent, 
+        parseInt(process.env.REDIS_FEATURED_CONTENT_TTL || '3600')
+      ); // Redis cache
       
       return featuredContent;
     } catch (error) {
@@ -128,20 +140,53 @@ export class CuratorService {
     try {
       // Make sure the service is initialized
       this.initialize();
+
+      // Step 1: Check Redis cache specifically for this category
+      const categoryRedisKey = `featured:category:${categoryId}`;
+      const redisCachedCategory = await redisService.get<FeaturedCategory>(categoryRedisKey);
       
-      // First check if category exists in cached content
-      const cachedContent = CacheService.getCachedFeaturedContent();
-      if (cachedContent) {
-        const cachedCategory = cachedContent.categories.find(category => category.id === categoryId);
-        if (cachedCategory && cachedCategory.items.length > 0) {
-          console.log(`Retrieved category '${categoryId}' from cache`);
-          return cachedCategory;
+      if (redisCachedCategory) {
+        console.log(`[CuratorService] Using Redis cached category '${categoryId}'`);
+        return redisCachedCategory;
+      }
+      
+      console.log(`[CuratorService] Cache miss for category '${categoryId}' - checking featured content`);
+
+      // Step 2: Try to get from Redis cached featured content
+      const featuredRedisKey = 'featured:content';
+      const redisCachedContent = await redisService.get<FeaturedContent>(featuredRedisKey);
+      
+      if (redisCachedContent && redisCachedContent.categories) {
+        const category = redisCachedContent.categories.find((c: FeaturedCategory) => c.id === categoryId);
+        if (category) {
+          console.log(`[CuratorService] Found category '${categoryId}' in Redis cached featured content`);
+          // Cache this category separately
+          await redisService.set(categoryRedisKey, category, 
+            parseInt(process.env.REDIS_FEATURED_CONTENT_TTL || '3600')
+          );
+          return category;
         }
       }
       
-      console.log(`Cache miss for category '${categoryId}' - fetching directly`);
+      // Step 3: Try legacy cache as fallback
+      const legacyCachedContent = CacheService.getCachedFeaturedContent();
       
-      // If category not found in cache, we'll try to fetch it directly based on category ID
+      if (legacyCachedContent && legacyCachedContent.categories) {
+        const category = legacyCachedContent.categories.find((c: FeaturedCategory) => c.id === categoryId);
+        if (category) {
+          console.log(`[CuratorService] Found category '${categoryId}' in legacy cached featured content`);
+          // Cache this category in Redis for next time
+          await redisService.set(categoryRedisKey, category, 
+            parseInt(process.env.REDIS_FEATURED_CONTENT_TTL || '3600')
+          );
+          return category;
+        }
+      }
+      
+      console.log(`[CuratorService] Category '${categoryId}' not found in any cache, fetching directly`);
+      
+      // Step 4: If we reach here, the category was not found in any cache
+      // We'll try to fetch it directly based on category ID
       if (this.useRealData && this.trendingClient) {
         try {
           console.log(`Fetching category '${categoryId}' directly using real data`);
@@ -282,25 +327,60 @@ export class CuratorService {
               items
             };
             
-            // Cache this individual category to avoid refetching
-            if (cachedContent) {
-              // Update the category in the cached content
-              const updatedCategories = cachedContent.categories.map(c => 
+            // Cache this individual category in Redis
+            const categoryRedisKey = `featured:category:${categoryId}`;
+            await redisService.set(categoryRedisKey, category, 
+              parseInt(process.env.REDIS_FEATURED_CONTENT_TTL || '3600')
+            );
+            
+            // Update both caches
+            // 1. First check if we have featured content in Redis
+            const featuredRedisKey = 'featured:content';
+            const redisFeaturedContent = await redisService.get<FeaturedContent>(featuredRedisKey);
+            
+            if (redisFeaturedContent && redisFeaturedContent.categories) {
+              // Update the category in Redis cached content
+              const updatedRedisCategories = redisFeaturedContent.categories.map((c: FeaturedCategory) => 
                 c.id === categoryId ? category : c
               );
               
-              // If the category doesn't exist in the cache, add it
-              if (!updatedCategories.some(c => c.id === categoryId)) {
-                updatedCategories.push(category);
+              // If the category doesn't exist in Redis cache, add it
+              if (!updatedRedisCategories.some((c: FeaturedCategory) => c.id === categoryId)) {
+                updatedRedisCategories.push(category);
               }
               
-              // Update the cache
-              const updatedContent = {
-                ...cachedContent,
-                categories: updatedCategories
+              // Update the Redis cache
+              const updatedRedisContent = {
+                ...redisFeaturedContent,
+                categories: updatedRedisCategories
               };
               
-              CacheService.cacheFeaturedContent(updatedContent);
+              await redisService.set(featuredRedisKey, updatedRedisContent, 
+                parseInt(process.env.REDIS_FEATURED_CONTENT_TTL || '3600')
+              );
+            }
+            
+            // 2. Then update legacy cache for backward compatibility
+            const legacyCachedContent = CacheService.getCachedFeaturedContent();
+            
+            if (legacyCachedContent && legacyCachedContent.categories) {
+              // Update the category in legacy cached content
+              const updatedLegacyCategories = legacyCachedContent.categories.map((c: FeaturedCategory) => 
+                c.id === categoryId ? category : c
+              );
+              
+              // If the category doesn't exist in legacy cache, add it
+              if (!updatedLegacyCategories.some((c: FeaturedCategory) => c.id === categoryId)) {
+                updatedLegacyCategories.push(category);
+              }
+              
+              // Update the legacy cache
+              const updatedLegacyContent = {
+                ...legacyCachedContent,
+                categories: updatedLegacyCategories
+              };
+              
+              CacheService.cacheFeaturedContent(updatedLegacyContent);
             }
             
             return category;

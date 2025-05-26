@@ -19,6 +19,7 @@ export interface TMDbSearchResult {
 
 export interface TMDbMovieDetails extends Omit<TMDbSearchResult, 'genreIds'> {
   genres: { id: number; name: string }[];
+  runtime?: number;
 }
 
 export interface TMDbTvShowResult extends Omit<TMDbSearchResult, 'title'> {
@@ -27,6 +28,9 @@ export interface TMDbTvShowResult extends Omit<TMDbSearchResult, 'title'> {
 
 export interface TMDbTvShowDetails extends Omit<TMDbTvShowResult, 'genreIds'> {
   genres: { id: number; name: string }[];
+  first_air_date?: string;
+  firstAirDate?: string;
+  number_of_seasons?: number;
 }
 
 export class TMDbClient {

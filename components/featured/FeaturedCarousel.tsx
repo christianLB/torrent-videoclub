@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { EnhancedMediaItem } from '@/lib/types/featured-content';
+import { FeaturedItem } from '@/lib/types/featured';
 import DownloadIndicator from './DownloadIndicator';
 import LibraryIndicator from './LibraryIndicator';
 
 interface FeaturedCarouselProps {
-  item: EnhancedMediaItem;
+  item: FeaturedItem;
 }
 
 const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({ item }) => {

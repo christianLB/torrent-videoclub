@@ -4,8 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/navbar';
 import MediaCard from './MediaCard';
-import { FeaturedCategory } from '@/lib/types/featured-content';
-import { CuratorService } from '@/lib/services/curator-service';
+import { FeaturedCategory } from '@/lib/types/featured';
+import { useCacheRefresh } from '@/lib/hooks/use-cache-refresh';
 
 interface CategoryPageProps {
   categoryId: string;
@@ -21,24 +21,31 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ categoryId }) => {
   const page = parseInt(searchParams.get('page') || '1', 10);
   const itemsPerPage = 20;
   
+  const { refreshCategory, clearCache } = useCacheRefresh();
+  
   useEffect(() => {
-    // Clear cache before fetching to ensure fresh data
-    // This is a temporary debugging step
-    CuratorService.clearAllCaches();
-    
+    // Define function to fetch category data via API endpoint
     const fetchCategoryContent = async () => {
       try {
         console.log(`[CategoryPage] Fetching category: ${categoryId}`);
         setIsLoading(true);
-        const categoryData = await CuratorService.getCategory(categoryId);
+        
+        // Use fetch API instead of direct CuratorService call
+        const response = await fetch(`/api/featured/category/${categoryId}`);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch category: ${response.status}`);
+        }
+        
+        const categoryData = await response.json();
         console.log(`[CategoryPage] Received data for ${categoryId}:`, 
           {
             id: categoryData?.id,
             title: categoryData?.title,
-            itemCount: categoryData?.items.length,
-            firstItem: categoryData?.items[0] ? {
+            itemCount: categoryData?.items?.length || 0,
+            firstItem: categoryData?.items?.[0] ? {
               title: categoryData.items[0].title,
-              guid: categoryData.items[0].guid.substring(0, 20) + '...',
+              id: categoryData.items[0].id,
               hasTmdb: categoryData.items[0].tmdbAvailable
             } : 'none'
           }

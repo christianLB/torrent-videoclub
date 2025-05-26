@@ -1,26 +1,26 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { EnhancedMediaItem } from '@/lib/types/featured-content';
+import { FeaturedItem } from '@/lib/types/featured';
 import DownloadIndicator from './DownloadIndicator';
 import LibraryIndicator from './LibraryIndicator';
 
 interface MediaCardProps {
-  item: EnhancedMediaItem;
+  item: FeaturedItem;
 }
 
 const MediaCard: React.FC<MediaCardProps> = ({ item }) => {
-  // Extract metadata from TMDb when available
-  const posterPath = item.tmdb?.posterPath || '';
-  const title = item.tmdb?.title || item.title;
-  const year = item.tmdb?.year || item.year;
+  // Extract metadata from TMDb when available - safely handle both TMDb formats
+  const posterPath = item.posterPath || item.tmdb?.posterPath || '';
+  const title = item.title;
+  const year = item.year;
   const quality = item.quality;
   const isInLibrary = item.inLibrary;
   const isDownloading = item.downloading;
   const downloadProgress = item.downloadProgress;
   const seeders = item.seeders;
-  const rating = item.tmdb?.voteAverage || 0;
-  const overview = item.tmdb?.overview || '';
-  const hasTmdbData = item.tmdbAvailable && !!item.tmdb;
+  const rating = item.rating || item.tmdb?.voteAverage || 0;
+  const overview = item.overview || item.tmdb?.overview || '';
+  const hasTmdbData = item.tmdbAvailable;
   
   const [imageLoaded, setImageLoaded] = useState(false);
   const [showOverview, setShowOverview] = useState(false);

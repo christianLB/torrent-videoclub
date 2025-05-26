@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { FeaturedCategory } from '@/lib/types/featured-content';
+import { FeaturedCategory } from '@/lib/types/featured';
 import MediaCard from './MediaCard';
 
 interface CategoryRowProps {
