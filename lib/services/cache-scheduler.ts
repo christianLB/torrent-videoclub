@@ -37,8 +37,9 @@ export class CacheSchedulerService {
       // Schedule cache refresh every hour
       this.scheduleHourlyRefresh();
       
-      // Also perform an initial refresh immediately
-      this.refreshCache();
+      // We're not running an immediate refresh by default
+      // as it's expensive and will happen at the scheduled time
+      console.log('[CacheScheduler] Scheduled refresh will occur at the next hour mark');
       
       initialized = true;
       console.log('[CacheScheduler] Cache scheduler initialized successfully');

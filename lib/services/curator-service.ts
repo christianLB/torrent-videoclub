@@ -27,6 +27,14 @@ export class CuratorService {
   private static useTMDb = true; // Set to true to enrich results with TMDb data
   
   /**
+   * Check if the service is using real data or mock data
+   * @returns true if using real data, false if using mock data
+   */
+  static isUsingRealData(): boolean {
+    return this.useRealData && !!this.prowlarrClient && !!this.trendingClient;
+  }
+  
+  /**
    * Utility method to clear all caches
    * This is useful for debugging and testing
    */

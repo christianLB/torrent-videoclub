@@ -224,6 +224,35 @@ export class RedisService {
   
   // Utility methods
   
+  /**
+   * Get all keys matching a pattern
+   * @param pattern Pattern to match (e.g., 'featured:*')
+   * @returns Array of matching keys
+   */
+  async getKeys(pattern: string): Promise<string[]> {
+    try {
+      const keys: string[] = [];
+      let cursor = '0';
+      
+      do {
+        const [nextCursor, foundKeys] = await this.client.scan(
+          cursor,
+          'MATCH',
+          pattern,
+          'COUNT',
+          100
+        );
+        cursor = nextCursor;
+        keys.push(...foundKeys);
+      } while (cursor !== '0');
+      
+      return keys;
+    } catch (error) {
+      console.error(`[RedisService] Error getting keys matching pattern ${pattern}:`, error);
+      return [];
+    }
+  }
+  
   async flushAll(): Promise<void> {
     try {
       await this.client.flushall();
