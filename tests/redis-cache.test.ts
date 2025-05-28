@@ -169,20 +169,20 @@ describe('Redis Caching System', () => {
 
     it('should initialize with environment variables', async () => {
       // Force initialize with our test environment variables
-      await CuratorService.forceInitialize(
-        'http://test-prowlarr.local',
-        'test-prowlarr-api-key',
-        'test-tmdb-api-key'
-      );
+      await CuratorService.forceInitialize({
+        prowlarrUrl: 'http://test-prowlarr.local',
+        prowlarrApiKey: 'test-prowlarr-api-key',
+        tmdbApiKey: 'test-tmdb-api-key'
+      });
       expect(CuratorService.isUsingRealData()).toBe(true);
     });
 
     it('should force initialize with provided credentials', () => {
-      CuratorService.forceInitialize(
-        'http://force-prowlarr.local',
-        'force-prowlarr-api-key',
-        'force-tmdb-api-key'
-      );
+      CuratorService.forceInitialize({
+        prowlarrUrl: 'http://force-prowlarr.local',
+        prowlarrApiKey: 'force-prowlarr-api-key',
+        tmdbApiKey: 'force-tmdb-api-key'
+      });
       
       expect(CuratorService.isUsingRealData()).toBe(true);
     });
