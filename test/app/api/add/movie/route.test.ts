@@ -15,7 +15,7 @@ describe('/api/add/movie route', () => {
   it('should add a movie to Radarr and return success response', async () => {
     // Mock TMDb movie details
     const mockTMDbDetails = {
-      id: 123,
+      tmdbId: 123, // Changed from id to tmdbId to match route's expectation
       title: 'Test Movie',
       releaseDate: '2023-01-01',
       year: 2023,
@@ -132,7 +132,7 @@ describe('/api/add/movie route', () => {
   it('should handle errors from Radarr API', async () => {
     // Mock TMDb movie details
     const mockTMDbDetails = {
-      id: 123,
+      tmdbId: 123, // Changed from id to tmdbId
       title: 'Test Movie',
       releaseDate: '2023-01-01',
       year: 2023,
@@ -171,7 +171,7 @@ describe('/api/add/movie route', () => {
     // Assert response is error
     expect(response.status).toBe(500);
     expect(data).toEqual({
-      error: 'Failed to add movie to Radarr',
+      error: 'Could not connect to Radarr. Please check configuration and ensure Radarr is running.',
     });
   });
 });

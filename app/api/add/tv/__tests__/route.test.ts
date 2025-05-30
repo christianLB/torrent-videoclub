@@ -39,8 +39,17 @@ describe('/api/add/tv POST endpoint', () => {
     // Mock SonarrClient methods
     mockSonarrClientInstance = {
       addSeries: vi.fn(),
+      getQualityProfiles: vi.fn(), // Add mock for getQualityProfiles
     };
     (SonarrClient as any).mockImplementation(() => mockSonarrClientInstance);
+
+    // Default mock for getQualityProfiles - can be overridden in specific tests
+    mockSonarrClientInstance.getQualityProfiles.mockResolvedValue([
+      { id: 1, name: 'SD' },
+      { id: 2, name: 'HD-720p' },
+      { id: 3, name: 'Standard' }, // A potential default name
+      { id: 4, name: 'Any' },      // Another potential default name
+    ]);
   });
 
   afterEach(() => {
@@ -75,9 +84,11 @@ describe('/api/add/tv POST endpoint', () => {
     expect(responseBody.success).toBe(true);
     expect(responseBody.message).toContain('added to Sonarr successfully');
     expect(mockTmdbClientInstance.getTvShowDetails).toHaveBeenCalledWith(mockTmdbId);
+    expect(mockSonarrClientInstance.getQualityProfiles).toHaveBeenCalled();
     expect(mockSonarrClientInstance.addSeries).toHaveBeenCalledWith(expect.objectContaining({
       tvdbId: mockTvShowDetails.tvdb_id,
       title: mockTvShowDetails.title,
+      qualityProfileId: 4, // Expecting 'Any' profile (id: 4) to be chosen from default mock
     }));
   });
 
@@ -205,5 +216,57 @@ describe('/api/add/tv POST endpoint', () => {
     process.env.SONARR_API_KEY = mockProcessEnv.SONARR_API_KEY;
   });
 
+  it('should use the first quality profile if no preferred names are found', async () => {
+    const mockTmdbId = 777;
+    const mockTvShowDetails: TMDBMediaItem = { tmdbId: mockTmdbId, mediaType: 'tv', title: 'Show With Specific Profile', tvdb_id: 1011 } as TMDBMediaItem;
+    mockTmdbClientInstance.getTvShowDetails.mockResolvedValue(mockTvShowDetails);
+    mockSonarrClientInstance.getQualityProfiles.mockResolvedValue([
+      { id: 10, name: 'Specific1' },
+      { id: 11, name: 'Specific2' },
+    ]);
+    mockSonarrClientInstance.addSeries.mockResolvedValue({ id: 1, title: 'Test Show' });
+
+    const request = new Request('http://localhost/api/add/tv', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tmdbId: mockTmdbId }),
+    });
+    await POST(request);
+    expect(mockSonarrClientInstance.addSeries).toHaveBeenCalledWith(expect.objectContaining({ qualityProfileId: 10 }));
+  });
+
+  it('should use fallback quality profile ID 1 if getQualityProfiles returns empty array', async () => {
+    const mockTmdbId = 888;
+    const mockTvShowDetails: TMDBMediaItem = { tmdbId: mockTmdbId, mediaType: 'tv', title: 'Show With Empty Profiles', tvdb_id: 1213 } as TMDBMediaItem;
+    mockTmdbClientInstance.getTvShowDetails.mockResolvedValue(mockTvShowDetails);
+    mockSonarrClientInstance.getQualityProfiles.mockResolvedValue([]);
+    mockSonarrClientInstance.addSeries.mockResolvedValue({ id: 1, title: 'Test Show' });
+
+    const request = new Request('http://localhost/api/add/tv', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tmdbId: mockTmdbId }),
+    });
+    await POST(request);
+    expect(mockSonarrClientInstance.addSeries).toHaveBeenCalledWith(expect.objectContaining({ qualityProfileId: 1 }));
+  });
+
+  it('should use fallback quality profile ID 1 if getQualityProfiles fails', async () => {
+    const mockTmdbId = 999;
+    const mockTvShowDetails: TMDBMediaItem = { tmdbId: mockTmdbId, mediaType: 'tv', title: 'Show With Profile Fetch Error', tvdb_id: 1415 } as TMDBMediaItem;
+    mockTmdbClientInstance.getTvShowDetails.mockResolvedValue(mockTvShowDetails);
+    mockSonarrClientInstance.getQualityProfiles.mockRejectedValue(new Error('API down'));
+    mockSonarrClientInstance.addSeries.mockResolvedValue({ id: 1, title: 'Test Show' });
+
+    const request = new Request('http://localhost/api/add/tv', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tmdbId: mockTmdbId }),
+    });
+    await POST(request);
+    expect(mockSonarrClientInstance.addSeries).toHaveBeenCalledWith(expect.objectContaining({ qualityProfileId: 1 }));
+  });
+
 });
+
 

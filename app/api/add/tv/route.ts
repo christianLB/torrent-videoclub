@@ -39,6 +39,27 @@ export async function POST(request: Request) {
     }
     const sonarrClient = new SonarrClient(sonarrUrl, sonarrApiKey);
 
+    // Fetch Sonarr quality profiles
+    let qualityProfileIdToUse = 1; // Default fallback
+    try {
+      const qualityProfiles = await sonarrClient.getQualityProfiles();
+      if (qualityProfiles && qualityProfiles.length > 0) {
+        let preferredProfile = qualityProfiles.find(p => p.name.toLowerCase() === 'any');
+        if (!preferredProfile) {
+          preferredProfile = qualityProfiles.find(p => p.name.toLowerCase() === 'standard');
+        }
+        if (!preferredProfile) {
+          preferredProfile = qualityProfiles[0]; // Take the first one if specific names not found
+        }
+        qualityProfileIdToUse = preferredProfile.id;
+        console.log(`[Sonarr AddTV] Using quality profile: ID=${qualityProfileIdToUse}, Name='${preferredProfile.name}'`);
+      } else {
+        console.warn('[Sonarr AddTV] No quality profiles found or fetch failed. Falling back to default ID 1.');
+      }
+    } catch (profileError) {
+      console.error('[Sonarr AddTV] Error fetching quality profiles, falling back to default ID 1:', profileError);
+    }
+
     // Get TV series details from TMDb
     const seriesDetails: TMDBMediaItem | null = await tmdbClient.getTvShowDetails(tmdbId);
 
@@ -62,7 +83,7 @@ export async function POST(request: Request) {
       tvdbId: seriesDetails.tvdb_id, 
       title: seriesDetails.title || 'Unknown Series',
       year: seriesDetails.firstAirDate ? new Date(seriesDetails.firstAirDate).getFullYear() : 0,
-      qualityProfileId: 1, // Assuming 1 is a common default, or use 0 for Sonarr's default if supported
+      qualityProfileId: qualityProfileIdToUse,
       rootFolderPath: process.env.SONARR_ROOT_FOLDER_PATH || '', // Allow override or use Sonarr's first available
       seasonFolder: true,
       monitored: true,

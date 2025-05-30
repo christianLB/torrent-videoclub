@@ -9,10 +9,11 @@ interface CategoryRowProps {
     title: string;
     items: TMDBMediaItem[]; // Changed from FeaturedItem[]
   };
+  libraryItemIds: Set<number>; // Added to check library status
   onAddToLibrary?: (tmdbId: number, mediaType: 'movie' | 'tv', title: string) => void | Promise<void>; // Updated signature
 }
 
-const CategoryRow: React.FC<CategoryRowProps> = ({ category, onAddToLibrary }) => {
+const CategoryRow: React.FC<CategoryRowProps> = ({ category, onAddToLibrary, libraryItemIds }) => {
   return (
     <section className="mb-8">
       <div className="flex items-center justify-between mb-4">
@@ -35,7 +36,7 @@ const CategoryRow: React.FC<CategoryRowProps> = ({ category, onAddToLibrary }) =
             {category.items.map((item) => (
               // item.tmdbId should be a unique number, suitable for a key.
               // If tmdbId can be zero or not present for some reason, a fallback key would be needed.
-              <MediaCard key={item.tmdbId || `media-${Math.random()}`} item={item} onAddToLibrary={onAddToLibrary} />
+              <MediaCard key={item.tmdbId || `media-${Math.random()}`} item={item} onAddToLibrary={onAddToLibrary} inLibrary={libraryItemIds.has(item.tmdbId)} />
             ))}
           </div>
         </div>

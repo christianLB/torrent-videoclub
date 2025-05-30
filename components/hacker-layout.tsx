@@ -96,7 +96,7 @@ export function HackerLayout({ children }: HackerLayoutProps) {
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col">
-      <TerminalHeader />
+      {/* <TerminalHeader /> */}
       
       <nav className="bg-gray-900 border-b border-green-900">
         <div className="container mx-auto px-4 py-3">

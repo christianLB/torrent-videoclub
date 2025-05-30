@@ -7,11 +7,12 @@ import { toast } from 'react-hot-toast';
 
 interface MediaCardProps {
   item: TMDBMediaItem;
+  inLibrary?: boolean; // Added to reflect library status
   // ProwlarrData could be added here later if we decide to fetch it per card
   onAddToLibrary?: (tmdbId: number, mediaType: 'movie' | 'tv', title: string) => void | Promise<void>; // Updated signature
 }
 
-const MediaCard: React.FC<MediaCardProps> = ({ item, onAddToLibrary }) => {
+const MediaCard: React.FC<MediaCardProps> = ({ item, onAddToLibrary, inLibrary }) => {
   // Destructure TMDBMediaItem fields
   const {
     tmdbId,
@@ -130,7 +131,7 @@ const MediaCard: React.FC<MediaCardProps> = ({ item, onAddToLibrary }) => {
             <button 
               className="bg-green-600 hover:bg-green-700 text-white w-full py-1 rounded text-sm mb-2 flex justify-center items-center disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleAddToLibrary}
-              disabled={isAddingToLibrary} // 'inLibrary' status is not available directly on TMDBMediaItem here
+              disabled={isAddingToLibrary || inLibrary}
               data-testid="media-card-add-to-library"
             >
               {isAddingToLibrary ? (
@@ -138,13 +139,15 @@ const MediaCard: React.FC<MediaCardProps> = ({ item, onAddToLibrary }) => {
                   <span className="w-3 h-3 rounded-full border-2 border-t-transparent border-white animate-spin mr-1"></span>
                   Adding...
                 </>
+              ) : inLibrary ? (
+                'In Library'
               ) : (
-                'Add to Library' // Text defaults to 'Add to Library' as 'inLibrary' status is unknown here
+                'Add to Library'
               )}
             </button>
-            <button className="bg-gray-700 hover:bg-gray-600 text-white w-full py-1 rounded text-sm">
+            {/* <button className="bg-gray-700 hover:bg-gray-600 text-white w-full py-1 rounded text-sm">
               Details
-            </button>
+            </button> */}
           </div>
         </div>
       </div>

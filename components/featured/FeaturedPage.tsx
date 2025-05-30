@@ -2,7 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import FeaturedCarousel from './FeaturedCarousel';
 import CategoryRow from './CategoryRow';
-import { TMDBMediaItem } from '@/lib/types/tmdb'; // Replaced old types
+import { TMDBMediaItem } from '@/lib/types/tmdb';
+import { useLibraryStatus } from '@/lib/useLibraryStatus'; // Replaced old types
 import { toast } from 'react-hot-toast';
 
 // Genre maps and transformation functions are removed as TMDBMediaItem is expected to be self-contained
@@ -15,6 +16,8 @@ const FeaturedPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAddingToLibraryGlobal, setIsAddingToLibraryGlobal] = useState(false); // Renamed to avoid conflict if local isAdding used in carousel
+  const [libraryItemIds, setLibraryItemIds] = useState<Set<number>>(new Set());
+  const { libraryTmdbIds: fetchedLibraryTmdbIds, isLoading: isLoadingLibrary, error: libraryError } = useLibraryStatus();
 
   // Handle adding items to library (signature changed for TMDB context)
   const handleAddToLibrary = async (tmdbId: number, mediaType: 'movie' | 'tv', title: string) => {
@@ -54,6 +57,7 @@ const FeaturedPage: React.FC = () => {
       }
 
       toast.success(`'${title}' added to library successfully!`, { id: 'add-to-library-toast' });
+      setLibraryItemIds(prev => new Set(prev).add(tmdbId)); // Update library status
 
     } catch (error) {
       console.error('Error adding to library:', error);
@@ -62,6 +66,20 @@ const FeaturedPage: React.FC = () => {
       setIsAddingToLibraryGlobal(false);
     }
   };
+
+  useEffect(() => {
+    // Update local libraryItemIds when fetchedLibraryTmdbIds from the hook changes.
+    // This merges optimistic updates from handleAddToLibrary with the fetched state.
+    setLibraryItemIds(prevIds => new Set([...Array.from(prevIds), ...Array.from(fetchedLibraryTmdbIds)]));
+  }, [fetchedLibraryTmdbIds]);
+
+  useEffect(() => {
+    if (libraryError) {
+      console.error("[FeaturedPage] Library status error:", libraryError);
+      // Optionally, you could show a non-blocking toast here for UI feedback
+      // toast.error(`Library status: ${libraryError}`, { duration: 4000 });
+    }
+  }, [libraryError]);
 
     useEffect(() => {
     const fetchData = async () => {
@@ -166,7 +184,7 @@ const FeaturedPage: React.FC = () => {
           <FeaturedCarousel 
             item={heroItem} 
             onAddToLibrary={handleAddToLibrary} 
-            // prowlarrData will be undefined for now, status indicators won't show
+            prowlarrData={heroItem ? { inLibrary: libraryItemIds.has(heroItem.tmdbId) } : {}}
           />
         </section>
       )}
@@ -177,7 +195,7 @@ const FeaturedPage: React.FC = () => {
           key={row.id} 
           category={{ id: row.id, title: row.title, items: row.items }} 
           onAddToLibrary={handleAddToLibrary} 
-          // Prowlarr data per item is not available here yet
+          libraryItemIds={libraryItemIds}
         />
       ))}
 

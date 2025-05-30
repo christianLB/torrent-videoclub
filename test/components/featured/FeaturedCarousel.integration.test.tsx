@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import FeaturedCarousel from '../../../components/featured/FeaturedCarousel';
-import { FeaturedItem } from '../../../lib/types/featured';
+import { TMDBMediaItem, TMDBGenre } from '../../../lib/types/tmdb';
 
 // Mock next/image since it's used in the component
 vi.mock('next/image', () => ({
@@ -16,95 +16,71 @@ vi.mock('next/image', () => ({
 }));
 
 describe('FeaturedCarousel Integration Tests', () => {
-  // Test with real data structure but mock content
-  const createTestItem = (overrides: Partial<FeaturedItem> = {}): FeaturedItem => ({
-    id: 'test-id',
-    title: 'Test Movie',
-    overview: 'Test overview',
-    backdropPath: '/test-backdrop.jpg',
-    posterPath: '/test-poster.jpg',
+  // Helper to create a mock TMDBMediaItem object for testing
+  const createTestTmdbItem = (overrides: Partial<TMDBMediaItem> = {}): TMDBMediaItem => ({
+    tmdbId: 12345, // Default tmdbId
     mediaType: 'movie',
-    rating: 8.0,
-    year: 2024,
-    genres: ['Action', 'Sci-Fi'],
-    inLibrary: false,
-    downloading: false,
-    tmdbAvailable: true,
-    tmdb: {
-      title: 'Test Movie TMDB',
-      overview: 'Test overview from TMDB',
-      posterPath: '/tmdb-poster.jpg',
-      backdropPath: '/tmdb-backdrop.jpg',
-      voteAverage: 8.0,
-    },
+    title: 'Default Test Title',
+    overview: 'This is a default test overview for the movie or series.',
+    posterPath: '/defaultPoster.jpg',
+    backdropPath: '/defaultBackdrop.jpg',
+    releaseDate: '2024-01-15', // Default for movies
+    firstAirDate: undefined, // Default for movies
+    voteAverage: 7.5,
+    genres: [{ id: 28, name: 'Action' }, { id: 12, name: 'Adventure' }] as TMDBGenre[],
+    // Add other TMDBMediaItem fields with defaults if necessary
     ...overrides
   });
 
-  it('renders correctly with data from the trending content client', () => {
-    // This mimics what would come from TrendingContentClient via CuratorService
-    const featuredItem = createTestItem({
-      title: 'Trending Movie',
-      year: 2024,
-      quality: '4K',
-      seeders: 150,
-      tmdb: {
-        title: 'Trending Movie (TMDB)',
-        overview: 'A trending movie with TMDB data',
-        backdropPath: '/trending-backdrop.jpg',
-        posterPath: '/trending-poster.jpg'
-      }
+  it('renders correctly with full TMDB data', () => {
+    const testItem = createTestTmdbItem({
+      title: 'Awesome Movie Title',
+      overview: 'An awesome overview of an awesome movie.',
+      releaseDate: '2024-05-20',
+      genres: [{ id: 878, name: 'Science Fiction' }]
     });
 
-    const { container } = render(<FeaturedCarousel item={featuredItem} />);
+    const { container } = render(<FeaturedCarousel item={testItem} />);
     
-    // Should show the TMDB title, not the original title
-    expect(screen.getByText('Trending Movie (TMDB)')).toBeDefined();
-    expect(screen.getByText('A trending movie with TMDB data')).toBeDefined();
+    expect(screen.getByText('Awesome Movie Title')).toBeDefined();
+    expect(screen.getByText('An awesome overview of an awesome movie.')).toBeDefined();
+    expect(screen.getByText('2024')).toBeDefined(); // Year derived from releaseDate
+    expect(screen.getByText('Science Fiction')).toBeDefined(); // Genre name
     
-    // Should show metadata
-    expect(screen.getByText('2024')).toBeDefined();
-    expect(screen.getByText('4K')).toBeDefined();
-    
-    // Component rendered
     expect(container.firstChild).toBeDefined();
   });
 
-  it('renders with partial data from the trending content client', () => {
-    // This mimics what would come from TrendingContentClient without all TMDB data
-    const featuredItem = createTestItem({
-      title: 'Partial TMDB Data Movie',
-      year: 2023,
-      quality: 'HD',
-      seeders: 75,
-      tmdb: {
-        // Only partial data
-        posterPath: '/partial-poster.jpg'
-      }
+    it('renders with partial data, showing fallbacks', () => {
+    const testItem = createTestTmdbItem({
+      title: 'Movie With Minimal Info',
+      overview: undefined, // Explicitly undefined to test fallback
+      releaseDate: '2023-03-10',
+      genres: [], // Empty genres
+      posterPath: '/minimal-poster.jpg' // Has a poster though
     });
 
-    render(<FeaturedCarousel item={featuredItem} />);
+    render(<FeaturedCarousel item={testItem} />);
     
-    // Should fall back to the original title
-    expect(screen.getByText('Partial TMDB Data Movie')).toBeDefined();
-    
-    // Should show fallback description
-    expect(screen.getByText('Description not available')).toBeDefined();
+    expect(screen.getByText('Movie With Minimal Info')).toBeDefined();
+    // Check for the component's internal fallback for overview
+    expect(screen.getByText('No description available')).toBeDefined(); 
+    expect(screen.getByText('2023')).toBeDefined();
+    // Ensure genres are not displayed if empty or not provided, or handle as appropriate
+    // For example, if an empty genre list means nothing is rendered for genres:
+    expect(screen.queryByText('Action')).toBeNull(); // Assuming 'Action' was a default genre
   });
 
-  it('handles missing tmdb property from trending content client', () => {
-    // This mimics what would come from TrendingContentClient with no TMDB data
-    const featuredItem = createTestItem({
-      title: 'No TMDB Data',
-      year: 2022,
-      quality: '1080p',
-      seeders: 50,
-      tmdb: undefined
+    it('handles item with undefined overview to use component default', () => {
+    const testItem = createTestTmdbItem({
+      title: 'Item With No Overview Provided',
+      overview: undefined, // Key to test component's internal default
+      releaseDate: '2022-07-01'
     });
 
-    render(<FeaturedCarousel item={featuredItem} />);
+    render(<FeaturedCarousel item={testItem} />);
     
-    // Should use fallbacks
-    expect(screen.getByText('No TMDB Data')).toBeDefined();
-    expect(screen.getByText('Description not available')).toBeDefined();
+    expect(screen.getByText('Item With No Overview Provided')).toBeDefined();
+    expect(screen.getByText('No description available')).toBeDefined(); // Component's default
+    expect(screen.getByText('2022')).toBeDefined();
   });
 });

@@ -140,4 +140,92 @@ describe('SonarrClient', () => {
       );
     });
   });
+
+  describe('getLibraryTmdbIds', () => {
+    it('should call fetch with correct parameters and return TMDB IDs on success', async () => {
+      const mockSeriesResponse: any[] = [
+        { id: 1, title: 'Series 1', tmdbId: 201, year: 2020 },
+        { id: 2, title: 'Series 2', tmdbId: 202, year: 2021 },
+      ];
+      const mockResponse = {
+        ok: true,
+        json: vi.fn().mockResolvedValue(mockSeriesResponse),
+      };
+      (global.fetch as any).mockResolvedValue(mockResponse);
+
+      const result = await sonarrClient.getLibraryTmdbIds();
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        `${mockBaseUrl}/api/v3/series`,
+        {
+          method: 'GET',
+          headers: {
+            'X-Api-Key': mockApiKey,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      expect(result).toEqual([201, 202]);
+    });
+
+    it('should return an empty array when the library is empty', async () => {
+      const mockSeriesResponse: any[] = [];
+      const mockResponse = {
+        ok: true,
+        json: vi.fn().mockResolvedValue(mockSeriesResponse),
+      };
+      (global.fetch as any).mockResolvedValue(mockResponse);
+
+      const result = await sonarrClient.getLibraryTmdbIds();
+
+      expect(result).toEqual([]);
+    });
+
+    it('should filter out items with invalid or missing tmdbId', async () => {
+      const mockSeriesResponse: any[] = [
+        { id: 1, title: 'Series 1', tmdbId: 201, year: 2020 },
+        { id: 2, title: 'Series 2', tmdbId: null, year: 2021 }, // Invalid tmdbId
+        { id: 3, title: 'Series 3', year: 2022 }, // Missing tmdbId
+        { id: 4, title: 'Series 4', tmdbId: 204, year: 2023 },
+        { id: 5, title: 'Series 5', tmdbId: 'not-a-number', year: 2024 }, // Invalid tmdbId
+      ];
+      const mockResponse = {
+        ok: true,
+        json: vi.fn().mockResolvedValue(mockSeriesResponse),
+      };
+      (global.fetch as any).mockResolvedValue(mockResponse);
+
+      const result = await sonarrClient.getLibraryTmdbIds();
+
+      expect(result).toEqual([201, 204]);
+    });
+
+    it('should throw an error when fetch fails', async () => {
+      const mockResponse = {
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+        text: vi.fn().mockResolvedValue('Sonarr internal error'),
+      };
+      (global.fetch as any).mockResolvedValue(mockResponse);
+
+      await expect(sonarrClient.getLibraryTmdbIds()).rejects.toThrow(
+        'Failed to get series from Sonarr: 500 Internal Server Error - Sonarr internal error'
+      );
+    });
+
+    it('should throw an error when fetch fails and response text cannot be read', async () => {
+      const mockResponse = {
+        ok: false,
+        status: 403,
+        statusText: 'Forbidden',
+        text: vi.fn().mockRejectedValue(new Error('Failed to read text')),
+      };
+      (global.fetch as any).mockResolvedValue(mockResponse);
+
+      await expect(sonarrClient.getLibraryTmdbIds()).rejects.toThrow(
+        'Failed to get series from Sonarr: 403 Forbidden '
+      );
+    });
+  });
 });

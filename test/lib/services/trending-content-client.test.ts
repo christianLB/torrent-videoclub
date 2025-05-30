@@ -82,10 +82,6 @@ describe('TrendingContentClient', () => {
   });
 
 
-  afterEach(() => {
-    vi.resetAllMocks();
-  });
-
   describe('getTrendingMovies', () => {
     it('should fetch trending movies', async () => {
       const result = await trendingClient.getTrendingMovies({ limit: 10 });

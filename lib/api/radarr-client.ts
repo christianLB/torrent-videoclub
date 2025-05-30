@@ -75,10 +75,19 @@ export class RadarrClient {
         if (!movieDataToUse.qualityProfileId || movieDataToUse.qualityProfileId <= 0) {
           const profiles = await this.getQualityProfiles();
           if (profiles.length > 0) {
-            movieDataToUse.qualityProfileId = profiles[0].id;
-            console.log(`Using quality profile: ${profiles[0].name} (ID: ${profiles[0].id})`);
+            // Prefer a profile named 'Any' or 'Standard' if available, otherwise use the first one.
+            let preferredProfile = profiles.find(p => p.name.toLowerCase() === 'any');
+            if (!preferredProfile) {
+              preferredProfile = profiles.find(p => p.name.toLowerCase() === 'standard');
+            }
+            if (!preferredProfile) {
+              preferredProfile = profiles[0];
+            }
+            movieDataToUse.qualityProfileId = preferredProfile.id;
+            console.log(`[Radarr AddMovie] Using quality profile: ID=${preferredProfile.id}, Name='${preferredProfile.name}'`);
           } else {
-            throw new Error('No quality profiles found in Radarr');
+            console.warn('[Radarr AddMovie] No quality profiles found or fetch failed. Falling back to default ID 1.');
+            movieDataToUse.qualityProfileId = 1; // Fallback quality profile ID
           }
         }
         
@@ -188,6 +197,48 @@ export class RadarrClient {
     } catch (error) {
       console.error('Error getting quality profiles from Radarr:', error);
       return [];
+    }
+  }
+
+  /**
+   * Get all TMDB IDs of movies in the Radarr library
+   * @returns A promise that resolves to an array of TMDB IDs
+   */
+  async getLibraryTmdbIds(): Promise<number[]> {
+    try {
+      const url = `${this.baseUrl}/api/v3/movie`;
+      console.log(`[RadarrClient] Fetching all movies from Radarr: ${url}`);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'X-Api-Key': this.apiKey,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        let errorText = '';
+        try {
+          errorText = await response.text();
+        } catch (e) {
+          // Ignore if can't read text
+        }
+        throw new Error(
+          `Failed to get movies from Radarr: ${response.status} ${response.statusText} ${errorText ? '- ' + errorText : ''}`
+        );
+      }
+
+      const movies: RadarrMovieResponse[] = await response.json();
+      const tmdbIds = movies.map(movie => movie.tmdbId).filter(id => typeof id === 'number');
+      
+      console.log(`[RadarrClient] Found ${tmdbIds.length} movies in Radarr library.`);
+      return tmdbIds;
+    } catch (error) {
+      console.error('[RadarrClient] Error getting library TMDB IDs from Radarr:', error);
+      // In case of error, return an empty array or rethrow based on desired handling
+      // For now, rethrowing to let the caller handle it.
+      throw error;
     }
   }
 }

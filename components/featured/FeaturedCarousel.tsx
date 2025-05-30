@@ -174,14 +174,14 @@ const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({ item, prowlarrData,
           {inLibrary && <LibraryIndicator />}
           {/* Pass isProcessing to DownloadIndicator if it can handle it, or adjust logic */}
           {(isDownloading || isProcessing) && <DownloadIndicator progress={0} isProcessing={isProcessing} />}
-          {quality && <span className="text-xs border border-green-500 text-green-500 px-2 py-0.5 rounded">
+          {/* {quality && <span className="text-xs border border-green-500 text-green-500 px-2 py-0.5 rounded">
             {quality}
-          </span>}
+          </span>} */}
           {displayYear && !isNaN(displayYear) && <span className="text-xs text-gray-400">{displayYear}</span>} {/* Ensured displayYear is a number */}
           {/* Optionally display genres */}
           {displayGenres && displayGenres.length > 0 && (
             <span className="text-xs text-gray-400 hidden md:block">
-              {displayGenres.join(' · ')}
+              {displayGenres.map(genre => genre.name).join(' · ')}
             </span>
           )}
         </div>

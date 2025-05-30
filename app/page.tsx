@@ -5,14 +5,7 @@ import { Navbar } from "@/components/navbar";
 export default function Home() {
   return (
     <main className="bg-gray-900 text-white min-h-screen">
-      <Navbar />
-      
-      {/* Debug message to confirm data flow */}
-      <div className="mb-4 p-2 text-xs text-white bg-gray-800 rounded">
-        <p>✓ Using real data from Prowlarr</p>
-        <p>✓ Rendering featured content with graceful fallbacks</p>
-        <p className="text-gray-400 text-xs mt-1">Loading timestamp: {new Date().toISOString()}</p>
-      </div>
+
       
       {/* Featured Content Section */}
       <FeaturedPage />
