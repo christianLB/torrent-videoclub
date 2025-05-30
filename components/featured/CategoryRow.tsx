@@ -1,11 +1,15 @@
 import React from 'react';
 import Link from 'next/link';
-import { FeaturedCategory } from '@/lib/types/featured';
+import { TMDBMediaItem } from '@/lib/types/tmdb'; // Replaced old types
 import MediaCard from './MediaCard';
 
 interface CategoryRowProps {
-  category: FeaturedCategory;
-  onAddToLibrary?: (guid: string, mediaType: 'movie' | 'tv', indexerId: string | number, title: string) => void;
+  category: {
+    id: string;
+    title: string;
+    items: TMDBMediaItem[]; // Changed from FeaturedItem[]
+  };
+  onAddToLibrary?: (tmdbId: number, mediaType: 'movie' | 'tv', title: string) => void | Promise<void>; // Updated signature
 }
 
 const CategoryRow: React.FC<CategoryRowProps> = ({ category, onAddToLibrary }) => {
@@ -29,7 +33,9 @@ const CategoryRow: React.FC<CategoryRowProps> = ({ category, onAddToLibrary }) =
         <div className="overflow-x-auto pb-4 hide-scrollbar">
           <div className="flex space-x-4">
             {category.items.map((item) => (
-              <MediaCard key={item.guid} item={item} onAddToLibrary={onAddToLibrary} />
+              // item.tmdbId should be a unique number, suitable for a key.
+              // If tmdbId can be zero or not present for some reason, a fallback key would be needed.
+              <MediaCard key={item.tmdbId || `media-${Math.random()}`} item={item} onAddToLibrary={onAddToLibrary} />
             ))}
           </div>
         </div>

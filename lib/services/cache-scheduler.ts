@@ -4,7 +4,8 @@
  * This service uses node-cron to schedule automatic cache refreshes,
  * ensuring Redis is always populated with fresh data.
  */
-import { CuratorService } from './curator-service';
+// import { CuratorService } from './curator-service'; // Commenting out old service
+import { tmdbDataService } from './tmdb-data-service'; // Import new TMDB data service
 
 // We'll use dynamic import for node-cron since it's a Node.js module
 // and we want to avoid issues with client-side rendering
@@ -79,59 +80,58 @@ export class CacheSchedulerService {
    * Refresh all cache data
    */
   static async refreshCache() {
-    console.log('[CacheScheduler] Starting cache refresh...');
+    console.log('[CacheScheduler] Starting TMDB cache refresh...');
     try {
-      // First, refresh the main featured content
-      console.log('[CacheScheduler] Refreshing featured content...');
-      const featuredContent = await CuratorService.getFeaturedContent();
-      
-      // Then refresh each predefined category
-      const categories = ['trending-movies', 'popular-tv', 'new-releases', '4k-content'];
-      console.log(`[CacheScheduler] Refreshing ${categories.length} categories...`);
-      
-      const results = await Promise.all(
-        categories.map(async (categoryId) => {
+      const refreshTasks = [
+        { name: 'Popular Movies (Page 1)', task: () => tmdbDataService.getOrFetchPopularMovies(1) },
+        { name: 'Trending Movies Weekly (Page 1)', task: () => tmdbDataService.getOrFetchTrendingMovies('week', 1) },
+        { name: 'Popular TV Shows (Page 1)', task: () => tmdbDataService.getOrFetchPopularTvShows(1) },
+        { name: 'Trending TV Shows Weekly (Page 1)', task: () => tmdbDataService.getOrFetchTrendingTvShows('week', 1) },
+      ];
+
+      console.log(`[CacheScheduler] Refreshing ${refreshTasks.length} TMDB categories...`);
+
+      const results = await Promise.allSettled(
+        refreshTasks.map(async (taskInfo) => {
           try {
-            const category = await CuratorService.getCategory(categoryId);
+            console.log(`[CacheScheduler] Refreshing: ${taskInfo.name}`);
+            const items = await taskInfo.task();
+            console.log(`[CacheScheduler] Successfully refreshed ${taskInfo.name}, ${items.length} items fetched/updated.`);
             return {
-              categoryId,
-              success: !!category,
-              itemCount: category?.items?.length || 0
+              category: taskInfo.name,
+              success: true,
+              itemCount: items.length,
             };
           } catch (error) {
-            console.error(`[CacheScheduler] Error refreshing category ${categoryId}:`, error);
+            console.error(`[CacheScheduler] Error refreshing ${taskInfo.name}:`, error);
             return {
-              categoryId,
+              category: taskInfo.name,
               success: false,
-              error: error instanceof Error ? error.message : 'Unknown error'
+              error: error instanceof Error ? error.message : 'Unknown error',
             };
           }
         })
       );
-      
-      console.log('[CacheScheduler] Cache refresh completed successfully', {
-        featuredContent: {
-          carouselItems: featuredContent.featuredCarouselItems?.length || 0,
-          categories: featuredContent.categories?.length || 0
-        },
-        categories: results
+
+      const summary = results.map(r => {
+        if (r.status === 'fulfilled') return r.value;
+        // For rejected promises, structure is different, so we handle it to provide some info
+        return { category: 'Unknown (Promise Rejected)', success: false, error: r.reason?.message || 'Unknown promise rejection' }; 
       });
+
+      console.log('[CacheScheduler] TMDB Cache refresh completed.', { summary });
       
       return {
         success: true,
         timestamp: new Date().toISOString(),
-        featuredContent: {
-          carouselItems: featuredContent.featuredCarouselItems?.length || 0,
-          categories: featuredContent.categories?.length || 0
-        },
-        categories: results
+        refreshedCategories: summary,
       };
     } catch (error) {
-      console.error('[CacheScheduler] Error refreshing cache:', error);
-      return { 
-        success: false, 
+      console.error('[CacheScheduler] Critical error during cache refresh process:', error);
+      return {
+        success: false,
         timestamp: new Date().toISOString(),
-        error: error instanceof Error ? error.message : 'Unknown error' 
+        error: error instanceof Error ? error.message : 'Critical error in refreshCache',
       };
     }
   }

@@ -7,6 +7,23 @@
  * DO NOT import this file in any client components!
  */
 import Redis from 'ioredis';
+import { TMDBMediaItem } from '../../types/tmdb'; // Added for TMDB caching
+
+// TMDB Caching Constants
+const TMDB_ITEM_PREFIX = 'tmdb:item:';
+const TMDB_LIST_PREFIX = 'tmdb:list:';
+const DEFAULT_TMDB_TTL_SECONDS = parseInt(process.env.REDIS_TMDB_TTL_SECONDS || '3600', 10); // Default 1 hour
+
+// Helper functions for TMDB cache keys
+const getTMDBItemKey = (tmdbId: number, mediaType: 'movie' | 'tv'): string => {
+  return `${TMDB_ITEM_PREFIX}${mediaType}:${tmdbId}`;
+};
+
+const getTMDBListKey = (listName: string): string => {
+  // Sanitize listName to prevent issues with special characters in keys, though Redis is generally flexible.
+  // For simplicity, we'll assume listName is already a safe string (e.g., 'popular-movies', 'trending-tv-week').
+  return `${TMDB_LIST_PREFIX}${listName}`;
+};
 
 export class RedisService {
   private static instance: RedisService;
@@ -36,26 +53,23 @@ export class RedisService {
         host: url.hostname,
         port: url.port ? parseInt(url.port) : 6379,
         password: password || undefined, // Only provide password if it actually exists
-        maxRetriesPerRequest: 3,
-        connectTimeout: 5000, // 5 seconds timeout
+        maxRetriesPerRequest: null, // Allow retryStrategy to control retries
+        connectTimeout: 10000, // 10 seconds timeout for initial connection attempt
         retryStrategy: (times: number) => {
-          // If we've tried more than 3 times, and we're connecting to 'redis' host,
-          // try localhost instead for development purposes
-          if (times > 3 && url.hostname === 'redis') {
-            console.log('[RedisService] Could not connect to redis host, trying localhost...');
-            const localClient = new Redis({
-              host: 'localhost',
-              port: 6379,
-              maxRetriesPerRequest: 3,
-              connectTimeout: 5000
-            });
-            this.client = localClient;
-            return null; // Stop retrying with the original configuration
+          const maxRetries = 10;
+          if (times > maxRetries) {
+            console.error(`[RedisService] Exceeded max retries (${maxRetries}). Could not connect to Redis.`);
+            return null; // Stop retrying
           }
-          
-          const delay = Math.min(times * 100, 3000);
+          // Exponential backoff with a cap
+          const delay = Math.min(times * 500, 5000); // Start with 500ms, up to 5s
+          console.log(`[RedisService] Connection attempt ${times} failed. Retrying in ${delay}ms...`);
           return delay;
         },
+        // The existing conditional retry for 'redis' hostname can be kept or integrated
+        // For now, the above general retry strategy will be primary.
+        // We can refine the part below if needed:
+        // if (times > 3 && url.hostname === 'redis') { ... }
         reconnectOnError: (err: Error) => {
           const errorMsg = err.message;
           console.error('[RedisService] Reconnect on error:', errorMsg);
@@ -86,7 +100,12 @@ export class RedisService {
       this.client = new Redis({
         host: 'localhost',
         port: 6379,
-        lazyConnect: true // Don't connect immediately
+        maxRetriesPerRequest: 3, // Basic retry for fallback
+        connectTimeout: 5000,
+        retryStrategy: (times: number) => {
+          if (times > 3) return null;
+          return Math.min(times * 200, 2000); // Simple retry for fallback
+        }
       });
     }
     
@@ -334,6 +353,79 @@ export class RedisService {
   // Get the raw Redis client for advanced operations
   getClient(): Redis {
     return this.client;
+  }
+
+  // --- TMDB Specific Caching Methods ---
+
+  /**
+   * Caches a single TMDBMediaItem.
+   * @param item The TMDBMediaItem to cache.
+   * @param ttlSeconds Optional TTL in seconds. Defaults to DEFAULT_TMDB_TTL_SECONDS.
+   */
+  async setTMDBItem(item: TMDBMediaItem, ttlSeconds?: number): Promise<void> {
+    if (!item || typeof item.tmdbId === 'undefined' || !item.mediaType) {
+      console.error('[RedisService] Invalid TMDBMediaItem for caching:', item);
+      return;
+    }
+    const key = getTMDBItemKey(item.tmdbId, item.mediaType as 'movie' | 'tv');
+    const ttl = ttlSeconds ?? DEFAULT_TMDB_TTL_SECONDS;
+    console.log(`[RedisService] Caching TMDB item: ${key} with TTL: ${ttl}s`);
+    return this.set<TMDBMediaItem>(key, item, ttl);
+  }
+
+  /**
+   * Retrieves a single TMDBMediaItem from cache.
+   * @param tmdbId The TMDB ID of the item.
+   * @param mediaType The media type ('movie' or 'tv').
+   * @returns The cached TMDBMediaItem or null if not found.
+   */
+  async getTMDBItem(tmdbId: number, mediaType: 'movie' | 'tv'): Promise<TMDBMediaItem | null> {
+    const key = getTMDBItemKey(tmdbId, mediaType);
+    return this.get<TMDBMediaItem>(key);
+  }
+
+  /**
+   * Deletes a single TMDBMediaItem from cache.
+   * @param tmdbId The TMDB ID of the item.
+   * @param mediaType The media type ('movie' or 'tv').
+   * @returns True if deleted, false otherwise.
+   */
+  async deleteTMDBItem(tmdbId: number, mediaType: 'movie' | 'tv'): Promise<boolean> {
+    const key = getTMDBItemKey(tmdbId, mediaType);
+    return this.delete(key);
+  }
+
+  /**
+   * Caches a list of TMDB IDs (e.g., for popular movies, trending TV shows).
+   * @param listName A descriptive name for the list (e.g., 'popular-movies', 'trending-tv-week').
+   * @param ids An array of TMDB IDs.
+   * @param ttlSeconds Optional TTL in seconds. Defaults to DEFAULT_TMDB_TTL_SECONDS.
+   */
+  async setTMDBIdList(listName: string, ids: number[], ttlSeconds?: number): Promise<void> {
+    const key = getTMDBListKey(listName);
+    const ttl = ttlSeconds ?? DEFAULT_TMDB_TTL_SECONDS;
+    console.log(`[RedisService] Caching TMDB ID list: ${key} with ${ids.length} items, TTL: ${ttl}s`);
+    return this.set<number[]>(key, ids, ttl);
+  }
+
+  /**
+   * Retrieves a list of TMDB IDs from cache.
+   * @param listName The descriptive name of the list.
+   * @returns An array of TMDB IDs or null if not found.
+   */
+  async getTMDBIdList(listName: string): Promise<number[] | null> {
+    const key = getTMDBListKey(listName);
+    return this.get<number[]>(key);
+  }
+
+  /**
+   * Deletes a TMDB ID list from cache.
+   * @param listName The descriptive name of the list.
+   * @returns True if deleted, false otherwise.
+   */
+  async deleteTMDBList(listName: string): Promise<boolean> {
+    const key = getTMDBListKey(listName);
+    return this.delete(key);
   }
 }
 

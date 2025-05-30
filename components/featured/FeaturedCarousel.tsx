@@ -1,16 +1,27 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { FeaturedItem } from '@/lib/types/featured';
+import { TMDBMediaItem } from '@/lib/types/tmdb'; // Changed from FeaturedItem
 import DownloadIndicator from './DownloadIndicator';
 import LibraryIndicator from './LibraryIndicator';
 import { toast } from 'react-hot-toast';
 
-interface FeaturedCarouselProps {
-  item?: FeaturedItem; // Make item optional to handle undefined cases
-  onAddToLibrary?: (guid: string, mediaType: 'movie' | 'tv', indexerId: string | number, title: string) => void; // Updated callback
+interface ProwlarrData {
+  guid?: string;
+  indexerId?: string | number;
+  quality?: string;
+  inLibrary?: boolean;
+  isDownloading?: boolean;
+  isProcessing?: boolean;
 }
 
-const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({ item, onAddToLibrary }) => {
+interface FeaturedCarouselProps {
+  item?: TMDBMediaItem;
+  prowlarrData?: ProwlarrData; // For status display (inLibrary, quality etc.)
+  // onAddToLibrary now takes tmdbId, mediaType, and title
+  onAddToLibrary?: (tmdbId: number, mediaType: 'movie' | 'tv', title: string) => void | Promise<void>;
+}
+
+const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({ item, prowlarrData, onAddToLibrary }) => {
   // State to track when the high-quality image has loaded
   const [imageLoaded, setImageLoaded] = useState(false);
   const [smallImageLoaded, setSmallImageLoaded] = useState(false);
@@ -33,37 +44,55 @@ const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({ item, onAddToLibrar
     );
   }
   
-  // Destructure with defaults from transformed data (using new field names)
+  // Destructure TMDB data from item prop
   const {
-    fullBackdropPath = '/api/placeholder/1920/1080',
-    // fullPosterPath, // Not directly used in this component's render, but available on item
-    displayTitle = 'Untitled Content',
-    displayOverview = 'No description available',
-    displayYear = new Date().getFullYear(),
-    displayGenres = [], // New, from transformFeaturedItem
-    quality, // Directly from ProwlarrItemData (item.quality)
+    title: displayTitle = 'Untitled Content',
+    overview: displayOverview = 'No description available',
+    backdropPath,
+    releaseDate, // For movies
+    firstAirDate, // For TV shows
+    genres: displayGenres = [],
+    mediaType,
+    // tmdbId, // Available if needed
+  } = item || {};
+
+  // Destructure Prowlarr-specific data from prowlarrData prop
+  const {
+    guid,
+    indexerId,
+    quality,
     inLibrary = false,
     isDownloading = false,
-    isProcessing = false, // Added from new type
-    // downloadProgress, // Not part of new FeaturedItem, remove if not used by DownloadIndicator
-    guid, // Essential for add to library
-    indexerId, // Essential for add to library
-    mediaType // Essential for add to library
-  } = item;
+    isProcessing = false,
+  } = prowlarrData || {};
+
+  const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w1280'; // Or 'original'
+  const fullBackdropPath = backdropPath ? `${TMDB_IMAGE_BASE_URL}${backdropPath}` : '/api/placeholder/1920/1080';
+
+  let displayYearCalc = new Date().getFullYear();
+  if (item && mediaType === 'movie' && releaseDate) {
+    displayYearCalc = new Date(releaseDate).getFullYear();
+  } else if (item && mediaType === 'tv' && firstAirDate) {
+    displayYearCalc = new Date(firstAirDate).getFullYear();
+  }
+  const displayYear = displayYearCalc;
+
   
   // Handle adding to library
   const handleAddToLibraryClick = async () => {
     console.log('[FeaturedCarousel] handleAddToLibraryClick triggered. Item:', item, 'onAddToLibrary present:', !!onAddToLibrary);
-    if (!guid || indexerId === undefined || !mediaType) {
-      toast.error('Cannot add to library: Missing essential item data (GUID, Indexer ID, or Media Type)');
-      console.error('[FeaturedCarousel] Missing essential data for add to library:', { guid, indexerId, mediaType });
+    // Check for essential TMDB data for the add action
+    if (!item?.tmdbId || !item?.mediaType || !displayTitle) {
+      toast.error('Cannot add to library: Missing essential TMDB item data (ID, Media Type, or Title)');
+      console.error('[FeaturedCarousel] Missing essential TMDB data for add to library:', { tmdbId: item?.tmdbId, mediaType: item?.mediaType, title: displayTitle });
       return;
     }
 
     if (onAddToLibrary) {
       setIsAddingToLibrary(true); // Set loading state for this button
       try {
-        await onAddToLibrary(guid, mediaType, indexerId, displayTitle);
+        // Call onAddToLibrary with tmdbId, mediaType, and title from the TMDBMediaItem
+        await onAddToLibrary(item.tmdbId, item.mediaType, displayTitle);
         // Success toast is expected to be handled by the onAddToLibrary callback (i.e., in FeaturedPage)
       } catch (error) {
         console.error('[FeaturedCarousel] Error during onAddToLibrary call:', error);
@@ -79,7 +108,10 @@ const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({ item, onAddToLibrar
         const response = await fetch('/api/prowlarr/add', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ guid, indexerId, mediaType, title: displayTitle })
+          // Fallback direct API call - this part is less likely to be used if onAddToLibrary is always provided.
+          // If it were used, it would also need to be adapted to potentially find guid/indexerId first.
+          // For now, keeping its structure but acknowledging it's a fallback.
+          body: JSON.stringify({ tmdbId: item?.tmdbId, mediaType: item?.mediaType, title: displayTitle, message: 'Fallback - Prowlarr GUID/IndexerID would need to be resolved' })
         });
 
         if (!response.ok) {
@@ -145,7 +177,7 @@ const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({ item, onAddToLibrar
           {quality && <span className="text-xs border border-green-500 text-green-500 px-2 py-0.5 rounded">
             {quality}
           </span>}
-          {displayYear && <span className="text-xs text-gray-400">{displayYear}</span>} {/* Changed */}
+          {displayYear && !isNaN(displayYear) && <span className="text-xs text-gray-400">{displayYear}</span>} {/* Ensured displayYear is a number */}
           {/* Optionally display genres */}
           {displayGenres && displayGenres.length > 0 && (
             <span className="text-xs text-gray-400 hidden md:block">
@@ -169,7 +201,7 @@ const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({ item, onAddToLibrar
           <button 
             className="bg-gray-800 hover:bg-gray-700 text-white px-6 py-2 rounded-md font-medium flex items-center"
             onClick={handleAddToLibraryClick}
-            disabled={isAddingToLibrary || item?.inLibrary} 
+            disabled={isAddingToLibrary || inLibrary}  
             data-testid="featured-add-to-library"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">

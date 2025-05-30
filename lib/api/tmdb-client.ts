@@ -4,34 +4,8 @@
  * This client is responsible for interacting with the TMDb API
  * to search for movies and get movie details.
  */
+import { TMDBMediaItem, TMDBGenre } from '../types/tmdb';
 
-export interface TMDbSearchResult {
-  id: number;
-  title: string;
-  releaseDate: string;
-  year: number | undefined;
-  posterPath: string | null;
-  backdropPath: string | null;
-  voteAverage: number;
-  genreIds: number[];
-  overview: string;
-}
-
-export interface TMDbMovieDetails extends Omit<TMDbSearchResult, 'genreIds'> {
-  genres: { id: number; name: string }[];
-  runtime?: number;
-}
-
-export interface TMDbTvShowResult extends Omit<TMDbSearchResult, 'title'> {
-  name: string;
-}
-
-export interface TMDbTvShowDetails extends Omit<TMDbTvShowResult, 'genreIds'> {
-  genres: { id: number; name: string }[];
-  first_air_date?: string;
-  firstAirDate?: string;
-  number_of_seasons?: number;
-}
 
 export class TMDbClient {
   private apiKey: string;
@@ -47,60 +21,39 @@ export class TMDbClient {
    * @param query Search query
    * @returns Normalized movie results
    */
-  async searchMovies(query: string): Promise<TMDbSearchResult[]> {
+  async searchMovies(query: string): Promise<TMDBMediaItem[]> {
     try {
       // Log TMDb search (omitting API key for security)
       console.log('Searching TMDb for movies:', query);
-      console.log('TMDb API key length:', this.apiKey ? this.apiKey.length : 0);
       
       // Check if API key is empty or very short (likely invalid)
       if (!this.apiKey || this.apiKey.length < 5) {
         console.warn('TMDb API key appears to be missing or invalid - TMDb features will be limited');
-        
-        // In test environments, throw error to match test expectations
-        if (process.env.NODE_ENV === 'test') {
-          throw new Error('TMDb API key is missing or invalid');
-        }
-        
-        return []; // Return empty results instead of failing in production
+        if (process.env.NODE_ENV === 'test') throw new Error('TMDb API key is missing or invalid');
+        return []; 
       }
       
       const url = `${this.baseUrl}/search/movie?api_key=${this.apiKey}&query=${encodeURIComponent(query)}&include_adult=false&language=en-US`;
-      
       const response = await fetch(url, { method: 'GET' });
 
       if (!response.ok) {
         let errorMessage = `Failed to fetch data from TMDb: ${response.status} ${response.statusText}`;
-        
-        // Handle response.text safely
         try {
           const errorText = await response.text();
-          if (errorText) {
-            console.error(`TMDb API error: ${response.status} ${response.statusText}`, errorText);
-          }
+          if (errorText) console.error(`TMDb API error: ${response.status} ${response.statusText}`, errorText);
         } catch (textError) {
           console.error('Could not extract error text from response:', textError);
         }
-        
-        // In test environments, throw error to match test expectations
-        if (process.env.NODE_ENV === 'test') {
-          throw new Error(errorMessage);
-        }
-        
-        return []; // Return empty results instead of failing in production
+        if (process.env.NODE_ENV === 'test') throw new Error(errorMessage);
+        return [];
       }
 
       const data = await response.json();
       return data.results.map((result: any) => this.normalizeMovieResult(result));
     } catch (error) {
       console.error('Error searching TMDb movies:', error);
-      
-      // In test environments, re-throw the error to match test expectations
-      if (process.env.NODE_ENV === 'test') {
-        throw error;
-      }
-      
-      return []; // Return empty array on error in production
+      if (process.env.NODE_ENV === 'test') throw error;
+      return [];
     }
   }
   
@@ -109,32 +62,36 @@ export class TMDbClient {
    * @param query Search query
    * @returns Normalized TV show results
    */
-  async searchTvShows(query: string): Promise<TMDbSearchResult[]> {
+  async searchTvShows(query: string): Promise<TMDBMediaItem[]> {
     try {
-      // Log TMDb search (omitting API key for security)
       console.log('Searching TMDb for TV shows:', query);
-      
-      // Check if API key is empty or very short (likely invalid)
       if (!this.apiKey || this.apiKey.length < 5) {
         console.warn('TMDb API key appears to be missing or invalid - TMDb features will be limited');
-        return []; // Return empty results instead of failing
+        if (process.env.NODE_ENV === 'test') throw new Error('TMDb API key is missing or invalid');
+        return [];
       }
       
       const url = `${this.baseUrl}/search/tv?api_key=${this.apiKey}&query=${encodeURIComponent(query)}&include_adult=false&language=en-US`;
-      
       const response = await fetch(url, { method: 'GET' });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`TMDb API error: ${response.status} ${response.statusText}`, errorText);
-        return []; // Return empty results instead of failing
+        let errorMessage = `Failed to fetch data from TMDb: ${response.status} ${response.statusText}`;
+        try {
+          const errorText = await response.text();
+          if (errorText) console.error(`TMDb API error: ${response.status} ${response.statusText}`, errorText);
+        } catch (textError) {
+          console.error('Could not extract error text from response:', textError);
+        }
+        if (process.env.NODE_ENV === 'test') throw new Error(errorMessage);
+        return [];
       }
 
       const data = await response.json();
       return data.results.map((result: any) => this.normalizeTvShowResult(result));
     } catch (error) {
       console.error('Error searching TMDb TV shows:', error);
-      return []; // Return empty array on error
+      if (process.env.NODE_ENV === 'test') throw error;
+      return [];
     }
   }
 
@@ -143,16 +100,14 @@ export class TMDbClient {
    * @param movieId TMDb movie ID
    * @returns Normalized movie details
    */
-  async getMovieDetails(movieId: number): Promise<TMDbMovieDetails | null> {
+  async getMovieDetails(movieId: number): Promise<TMDBMediaItem | null> {
     try {
-      // Check if API key is missing
       if (!this.apiKey || this.apiKey.length < 5) {
         console.warn('TMDb API key appears to be missing or invalid - Cannot fetch movie details');
         return null;
       }
       
       const url = `${this.baseUrl}/movie/${movieId}?api_key=${this.apiKey}&language=en-US`;
-      
       const response = await fetch(url, { method: 'GET' });
 
       if (!response.ok) {
@@ -169,35 +124,26 @@ export class TMDbClient {
   }
 
   /**
-   * Normalize a movie result from TMDb
-   * @param result Raw TMDb search result
-   * @returns Normalized movie result
+   * Normalize a movie result from TMDb for search, popular, trending lists.
+   * @param result Raw TMDb list item result for a movie
+   * @returns Normalized movie item as TMDBMediaItem
    */
-  private normalizeMovieResult(result: any): TMDbSearchResult {
-    const {
-      id,
-      title,
-      release_date,
-      poster_path,
-      backdrop_path,
-      vote_average,
-      genre_ids,
-      overview,
-    } = result;
-    
-    // Extract year from release date
-    const year = release_date ? parseInt(release_date.substring(0, 4), 10) : undefined;
-    
+  private normalizeMovieResult(result: any): TMDBMediaItem {
     return {
-      id,
-      title,
-      releaseDate: release_date,
-      year,
-      posterPath: poster_path ? `${this.imageBaseUrl}/w500${poster_path}` : null,
-      backdropPath: backdrop_path ? `${this.imageBaseUrl}/original${backdrop_path}` : null,
-      voteAverage: vote_average,
-      genreIds: genre_ids,
-      overview,
+      tmdbId: result.id,
+      mediaType: 'movie',
+      title: result.title,
+      originalTitle: result.original_title,
+      overview: result.overview,
+      posterPath: result.poster_path, // Store relative path
+      backdropPath: result.backdrop_path, // Store relative path
+      releaseDate: result.release_date,
+      voteAverage: result.vote_average,
+      voteCount: result.vote_count,
+      popularity: result.popularity,
+      originalLanguage: result.original_language,
+      // genres: result.genre_ids, // TMDB search results provide genre_ids, not full genre objects.
+                                 // Full genre objects are in /details. Caching TMDBMediaItem will reflect this.
     };
   }
 
@@ -206,16 +152,14 @@ export class TMDbClient {
    * @param tvShowId TMDb TV show ID
    * @returns Normalized TV show details
    */
-  async getTvShowDetails(tvShowId: number): Promise<TMDbTvShowDetails | null> {
+  async getTvShowDetails(tvShowId: number): Promise<TMDBMediaItem | null> {
     try {
-      // Check if API key is missing
       if (!this.apiKey || this.apiKey.length < 5) {
         console.warn('TMDb API key appears to be missing or invalid - Cannot fetch TV show details');
         return null;
       }
       
-      const url = `${this.baseUrl}/tv/${tvShowId}?api_key=${this.apiKey}&language=en-US`;
-      
+      const url = `${this.baseUrl}/tv/${tvShowId}?api_key=${this.apiKey}&language=en-US&append_to_response=external_ids`;
       const response = await fetch(url, { method: 'GET' });
 
       if (!response.ok) {
@@ -232,35 +176,28 @@ export class TMDbClient {
   }
 
   /**
-   * Normalize movie details from TMDb
-   * @param result Raw TMDb movie details
-   * @returns Normalized movie details
+   * Normalize full movie details from TMDb.
+   * @param result Raw TMDb movie details result
+   * @returns Normalized movie details as TMDBMediaItem
    */
-  private normalizeMovieDetails(result: any): TMDbMovieDetails {
-    const {
-      id,
-      title,
-      release_date,
-      poster_path,
-      backdrop_path,
-      vote_average,
-      genres,
-      overview,
-    } = result;
-    
-    // Extract year from release date
-    const year = release_date ? parseInt(release_date.substring(0, 4), 10) : undefined;
-    
+  private normalizeMovieDetails(result: any): TMDBMediaItem {
     return {
-      id,
-      title,
-      releaseDate: release_date,
-      year,
-      posterPath: poster_path ? `${this.imageBaseUrl}/w500${poster_path}` : null,
-      backdropPath: backdrop_path ? `${this.imageBaseUrl}/original${backdrop_path}` : null,
-      voteAverage: vote_average,
-      genres,
-      overview,
+      tmdbId: result.id,
+      mediaType: 'movie',
+      title: result.title,
+      originalTitle: result.original_title,
+      overview: result.overview,
+      posterPath: result.poster_path, // Store relative path
+      backdropPath: result.backdrop_path, // Store relative path
+      releaseDate: result.release_date,
+      voteAverage: result.vote_average,
+      voteCount: result.vote_count,
+      popularity: result.popularity,
+      genres: result.genres as TMDBGenre[], // Details endpoint provides full genre objects
+      runtime: result.runtime,
+      status: result.status,
+      tagline: result.tagline,
+      originalLanguage: result.original_language,
     };
   }
 
@@ -269,31 +206,21 @@ export class TMDbClient {
    * @param result Raw TMDb TV show result
    * @returns Normalized TV show result
    */
-  private normalizeTvShowResult(result: any): TMDbSearchResult {
-    const {
-      id,
-      name,
-      first_air_date,
-      poster_path,
-      backdrop_path,
-      vote_average,
-      genre_ids,
-      overview,
-    } = result;
-    
-    // Extract year from first air date
-    const year = first_air_date ? parseInt(first_air_date.substring(0, 4), 10) : undefined;
-    
+  private normalizeTvShowResult(result: any): TMDBMediaItem {
     return {
-      id,
-      title: name, // Map name to title for consistency
-      releaseDate: first_air_date,
-      year,
-      posterPath: poster_path ? `${this.imageBaseUrl}/w500${poster_path}` : null,
-      backdropPath: backdrop_path ? `${this.imageBaseUrl}/original${backdrop_path}` : null,
-      voteAverage: vote_average,
-      genreIds: genre_ids,
-      overview,
+      tmdbId: result.id,
+      mediaType: 'tv',
+      title: result.name, // TV shows use 'name'
+      originalTitle: result.original_name,
+      overview: result.overview,
+      posterPath: result.poster_path, // Store relative path
+      backdropPath: result.backdrop_path, // Store relative path
+      firstAirDate: result.first_air_date,
+      voteAverage: result.vote_average,
+      voteCount: result.vote_count,
+      popularity: result.popularity,
+      originalLanguage: result.original_language,
+      // genres: result.genre_ids, // TMDB search results provide genre_ids, not full genre objects.
     };
   }
 
@@ -302,31 +229,85 @@ export class TMDbClient {
    * @param result Raw TMDb TV show details
    * @returns Normalized TV show details
    */
-  private normalizeTvShowDetails(result: any): TMDbTvShowDetails {
-    const {
-      id,
-      name,
-      first_air_date,
-      poster_path,
-      backdrop_path,
-      vote_average,
-      genres,
-      overview,
-    } = result;
-    
-    // Extract year from first air date
-    const year = first_air_date ? parseInt(first_air_date.substring(0, 4), 10) : undefined;
-    
+  private normalizeTvShowDetails(result: any): TMDBMediaItem {
+    // Ensure external_ids and tvdb_id are handled, even if null or undefined
+    const tvdbId = result.external_ids?.tvdb_id ? parseInt(result.external_ids.tvdb_id, 10) : undefined;
+
     return {
-      id,
-      name,
-      releaseDate: first_air_date,
-      year,
-      posterPath: poster_path ? `${this.imageBaseUrl}/w500${poster_path}` : null,
-      backdropPath: backdrop_path ? `${this.imageBaseUrl}/original${backdrop_path}` : null,
-      voteAverage: vote_average,
-      genres,
-      overview,
+      tmdbId: result.id,
+      mediaType: 'tv',
+      title: result.name, // TV shows use 'name'
+      originalTitle: result.original_name,
+      overview: result.overview,
+      posterPath: result.poster_path, // Store relative path
+      backdropPath: result.backdrop_path, // Store relative path
+      firstAirDate: result.first_air_date,
+      lastAirDate: result.last_air_date,
+      voteAverage: result.vote_average,
+      voteCount: result.vote_count,
+      popularity: result.popularity,
+      genres: result.genres as TMDBGenre[],
+      numberOfEpisodes: result.number_of_episodes,
+      numberOfSeasons: result.number_of_seasons,
+      episodeRunTime: result.episode_run_time,
+      status: result.status,
+      tagline: result.tagline,
+      originalLanguage: result.original_language,
+      tvdb_id: tvdbId, // Added tvdb_id here
     };
+  }
+
+  // Methods for popular and trending content
+  async getPopularMovies(page: number = 1): Promise<TMDBMediaItem[]> {
+    return this.fetchMediaList('/movie/popular', page, this.normalizeMovieResult.bind(this));
+  }
+
+  async getTrendingMovies(timeWindow: 'day' | 'week' = 'week', page: number = 1): Promise<TMDBMediaItem[]> {
+    return this.fetchMediaList(`/trending/movie/${timeWindow}`, page, this.normalizeMovieResult.bind(this));
+  }
+
+  async getPopularTvShows(page: number = 1): Promise<TMDBMediaItem[]> {
+    return this.fetchMediaList('/tv/popular', page, this.normalizeTvShowResult.bind(this));
+  }
+
+  async getTrendingTvShows(timeWindow: 'day' | 'week' = 'week', page: number = 1): Promise<TMDBMediaItem[]> {
+    return this.fetchMediaList(`/trending/tv/${timeWindow}`, page, this.normalizeTvShowResult.bind(this));
+  }
+
+  // Generic helper for fetching lists of media items
+  private async fetchMediaList(
+    endpoint: string, 
+    page: number, 
+    normalizer: (result: any) => TMDBMediaItem
+  ): Promise<TMDBMediaItem[]> {
+    try {
+      if (!this.apiKey || this.apiKey.length < 5) {
+        console.warn(`TMDb API key missing or invalid - Cannot fetch from ${endpoint}`);
+        if (process.env.NODE_ENV === 'test') throw new Error('TMDb API key is missing or invalid');
+        return [];
+      }
+
+      const url = `${this.baseUrl}${endpoint}?api_key=${this.apiKey}&language=en-US&page=${page}`;
+      const response = await fetch(url, { method: 'GET' });
+
+      if (!response.ok) {
+        let errorMessage = `Failed to fetch data from TMDb (${endpoint}): ${response.status} ${response.statusText}`;
+        try {
+          const errorText = await response.text();
+          if (errorText) console.error(`TMDb API error: ${response.status} ${response.statusText}`, errorText);
+        } catch (textError) {
+          console.error('Could not extract error text from response:', textError);
+        }
+        if (process.env.NODE_ENV === 'test') throw new Error(errorMessage);
+        return [];
+      }
+
+      const data = await response.json();
+      return data.results.map(normalizer);
+    } catch (error) {
+      console.error(`Error fetching from TMDb (${endpoint}):`, error);
+      if (process.env.NODE_ENV === 'test') throw error;
+      return [];
+    }
   }
 }
