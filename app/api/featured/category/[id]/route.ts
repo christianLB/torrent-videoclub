@@ -9,9 +9,11 @@ import { CuratorService } from '@/lib/services/curator-service';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
-  const categoryId = params.id;
+  // Correctly extract and await params in Next.js 14+
+  const { params } = context;
+  const categoryId = params?.id;
 
   if (!categoryId) {
     return NextResponse.json(

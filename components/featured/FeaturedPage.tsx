@@ -2,16 +2,166 @@
 import React, { useEffect, useState } from 'react';
 import FeaturedCarousel from './FeaturedCarousel';
 import CategoryRow from './CategoryRow';
-import { FeaturedContent, FeaturedItem, FeaturedCategory } from '@/lib/types/featured';
-// No need for client-side cache refresh
+import { FeaturedCategory, FeaturedContent, FeaturedItem } from '@/lib/types/featured';
+import { toast } from 'react-hot-toast';
 
+// TMDb Genre Maps (Moved outside component scope)
+const GENRE_MAP_MOVIE: { [key: number]: string } = {
+  28: 'Action', 12: 'Adventure', 16: 'Animation', 35: 'Comedy', 80: 'Crime',
+  99: 'Documentary', 18: 'Drama', 10751: 'Family', 14: 'Fantasy', 36: 'History',
+  27: 'Horror', 10402: 'Music', 9648: 'Mystery', 10749: 'Romance', 878: 'Science Fiction',
+  10770: 'TV Movie', 53: 'Thriller', 10752: 'War', 37: 'Western'
+};
+const GENRE_MAP_TV: { [key: number]: string } = {
+  10759: 'Action & Adventure', 16: 'Animation', 35: 'Comedy', 80: 'Crime', 99: 'Documentary',
+  18: 'Drama', 10751: 'Family', 10762: 'Kids', 9648: 'Mystery', 10763: 'News',
+  10764: 'Reality', 10765: 'Sci-Fi & Fantasy', 10766: 'Soap', 10767: 'Talk', 10768: 'War & Politics',
+  37: 'Western'
+};
+
+// Helper function to map genre IDs to names (Moved outside component scope)
+const mapGenreIdsToNames = (genreIds?: number[], mediaType?: 'movie' | 'tv'): string[] => {
+  if (!genreIds || genreIds.length === 0) return [];
+  const map = mediaType === 'tv' ? GENRE_MAP_TV : GENRE_MAP_MOVIE;
+  return genreIds.map(id => map[id]).filter(name => !!name) as string[];
+};
+
+// Helper function to transform featured items (Moved outside component scope)
+const transformFeaturedItem = (item: FeaturedItem): FeaturedItem => {
+  if (!item) {
+    return {
+      guid: `placeholder_${Date.now()}`,
+      indexerId: 'unknown_indexer',
+      title: 'Content Unavailable',
+      size: 0,
+      protocol: 'torrent',
+      mediaType: 'movie',
+      displayTitle: 'Content Unavailable',
+      displayOverview: 'Information for this item is currently unavailable.',
+      fullPosterPath: '/api/placeholder/500/750',
+      fullBackdropPath: '/api/placeholder/1920/1080',
+      displayYear: new Date().getFullYear(),
+      displayRating: 0,
+      displayGenres: [],
+      isProcessing: false,
+    } as FeaturedItem;
+  }
+  const transformed: FeaturedItem = JSON.parse(JSON.stringify(item));
+  transformed.fullPosterPath = item.tmdbInfo?.posterPath
+    ? `https://image.tmdb.org/t/p/w500${item.tmdbInfo.posterPath}`
+    : (item.guid === 'placeholder_hero' ? item.fullPosterPath : '/placeholder_500x750.svg');
+  transformed.fullBackdropPath = item.tmdbInfo?.backdropPath
+    ? `https://image.tmdb.org/t/p/w1280${item.tmdbInfo.backdropPath}`
+    : (item.guid === 'placeholder_hero' ? item.fullBackdropPath : '/placeholder_1920x1080.svg');
+  transformed.displayTitle = item.tmdbInfo?.title || item.title || 'Untitled';
+  transformed.displayOverview = item.tmdbInfo?.overview || 'No description available.';
+  transformed.displayYear = item.tmdbInfo?.year;
+  transformed.displayRating = item.tmdbInfo?.voteAverage;
+  transformed.displayGenres = mapGenreIdsToNames(item.tmdbInfo?.genreIds, item.mediaType);
+  return transformed;
+};
+
+// FeaturedPage does not currently accept any props.
 const FeaturedPage: React.FC = () => {
+  
   const [featuredContent, setFeaturedContent] = useState<FeaturedContent | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isAddingToLibrary, setIsAddingToLibrary] = useState(false);
   // Server-side caching only - no client-side refresh needed
 
-  useEffect(() => {
+  // Handle adding items to library
+  const handleAddToLibrary = async (guid: string, mediaType: 'movie' | 'tv', indexerId: string | number, title: string) => {
+    console.log('[FeaturedPage] handleAddToLibrary invoked with:', { guid, mediaType, indexerId, title });
+    if (isAddingToLibrary) {
+      console.log('[FeaturedPage] Bailing: isAddingToLibrary is true.');
+      return;
+    }
+
+    setIsAddingToLibrary(true);
+    try {
+      let targetItem: FeaturedItem | undefined;
+      if (featuredContent?.featuredItem?.guid === guid) {
+        targetItem = featuredContent.featuredItem;
+      } else if (featuredContent?.categories) {
+        for (const category of featuredContent.categories) {
+          const found = category.items.find(i => i.guid === guid);
+          if (found) {
+            targetItem = found;
+            break;
+          }
+        }
+      }
+
+      if (!targetItem) {
+        throw new Error('Target item not found in local featured content.');
+      }
+
+      if (mediaType === 'movie') {
+        if (!targetItem.tmdbInfo?.tmdbId) {
+          toast.error(`Cannot add movie '${title}': TMDb ID is missing.`);
+          setIsAddingToLibrary(false);
+          return;
+        }
+        const tmdbId = targetItem.tmdbInfo.tmdbId;
+        console.log(`[FeaturedPage] Adding MOVIE: ${title}, TMDb ID: ${tmdbId}`);
+
+        const response = await fetch('/api/add/movie', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tmdbId }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ message: `HTTP error ${response.status}` }));
+          throw new Error(errorData.message || `Failed to add movie (HTTP ${response.status})`);
+        }
+
+        const result = await response.json();
+
+        if (featuredContent) {
+          const updatedContent = JSON.parse(JSON.stringify(featuredContent));
+          const updateItemState = (item: FeaturedItem) => {
+            if (item.guid === guid) {
+              return {
+                ...item,
+                inLibrary: result.inLibrary !== undefined ? result.inLibrary : true,
+                isDownloading: result.isDownloading !== undefined ? result.isDownloading : false,
+              };
+            }
+            return item;
+          };
+          if (updatedContent.featuredItem?.guid === guid) {
+            updatedContent.featuredItem = updateItemState(updatedContent.featuredItem);
+          }
+          updatedContent.categories = updatedContent.categories.map((category: FeaturedCategory) => ({
+            ...category,
+            items: category.items.map(updateItemState),
+          }));
+          setFeaturedContent(updatedContent);
+        }
+        toast.success(result.message || `${title} added to library successfully.`);
+
+      } else if (mediaType === 'tv') {
+        console.log(`[FeaturedPage] Adding TV show '${title}' is not yet supported as /api/add/tv endpoint is missing.`);
+        toast.error(`Adding TV shows ('${title}') is not yet implemented.`);
+        setIsAddingToLibrary(false); // Release loading state
+        return; 
+      } else {
+        toast.error(`Unsupported media type: ${mediaType}`);
+        setIsAddingToLibrary(false); // Release loading state
+        return;
+      }
+
+    } catch (error) {
+      console.error('Error adding to library:', error);
+      toast.error(`Failed to add to library: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsAddingToLibrary(false);
+    }
+  };
+
+    useEffect(() => {
     const fetchFeaturedContent = async () => {
       try {
         setIsLoading(true);
@@ -22,6 +172,24 @@ const FeaturedPage: React.FC = () => {
         }
         
         const data = await response.json();
+        
+        // Transform the data to match the expected format for all components
+        if (data) {
+          // Transform featured item if it exists
+          if (data.featuredItem) {
+            data.featuredItem = transformFeaturedItem(data.featuredItem);
+          }
+          
+          // Transform all items in all categories
+          if (data.categories) {
+            data.categories = data.categories.map((category: FeaturedCategory) => ({
+              ...category,
+              items: category.items.map(transformFeaturedItem)
+            }));
+          }
+        }
+        
+        console.log('[FeaturedPage] fetchFeaturedContent updating featuredContent.');
         setFeaturedContent(data);
       } catch (err) {
         console.error('Failed to fetch featured content:', err);
@@ -34,14 +202,10 @@ const FeaturedPage: React.FC = () => {
     fetchFeaturedContent();
     
     // No need for client-side refresh - server handles caching
-    
-    // No need to set up refresh intervals - handled by server-side scheduler
-    
-    // No cleanup needed
-  }, []); // No dependencies needed
-
+  }, []);
+  
   // Loading state
-  if (isLoading) {
+  if (isLoading && !featuredContent) {
     return (
       <div className="flex items-center justify-center min-h-[70vh]">
         <div className="animate-pulse flex flex-col items-center">
@@ -58,7 +222,7 @@ const FeaturedPage: React.FC = () => {
   }
 
   // Error state
-  if (error || !featuredContent) {
+  if (error && !featuredContent) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] text-center px-4">
         <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-red-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -76,16 +240,34 @@ const FeaturedPage: React.FC = () => {
     );
   }
 
+  if (!featuredContent) {
+    // This should ideally be caught by the isLoading/error states,
+    // but it acts as a final guard for TypeScript and runtime safety.
+    // It also handles the case where fetch completes but data is still null/undefined.
+    return (
+      <div className="flex items-center justify-center min-h-[70vh]">
+        <p className="text-gray-400">Featured content is currently unavailable.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-screen-2xl mx-auto px-4 pb-12 pt-6">
       {/* Featured hero carousel */}
       <section className="mb-12">
-        <FeaturedCarousel item={featuredContent.featuredItem} />
+        <FeaturedCarousel 
+          item={featuredContent.featuredItem} 
+          onAddToLibrary={handleAddToLibrary} 
+        />
       </section>
       
       {/* Categories */}
       {featuredContent.categories.map((category) => (
-        <CategoryRow key={category.id} category={category} />
+        <CategoryRow 
+          key={category.id} 
+          category={category} 
+          onAddToLibrary={handleAddToLibrary} 
+        />
       ))}
 
       {/* Empty state if no categories */}

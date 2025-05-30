@@ -17,6 +17,14 @@ type ServerConfig = {
   };
 };
 
+// Debug environment variables
+console.log('[Config] Loading server configuration from environment variables', {
+  PROWLARR_URL: process.env.PROWLARR_URL ? 'SET' : 'NOT SET',
+  PROWLARR_API_KEY: process.env.PROWLARR_API_KEY ? 'SET' : 'NOT SET',
+  TMDB_API_KEY: process.env.TMDB_API_KEY ? 'SET' : 'NOT SET',
+  REDIS_URL: process.env.REDIS_URL || 'default: redis://localhost:6379'
+});
+
 export const serverConfig: ServerConfig = {
   prowlarr: {
     url: process.env.PROWLARR_URL || '',
@@ -34,6 +42,15 @@ export const serverConfig: ServerConfig = {
     useTMDb: !!process.env.TMDB_API_KEY,
   },
 };
+
+// Debug the computed config
+console.log('[Config] Server configuration loaded:', {
+  'prowlarr.url': serverConfig.prowlarr.url ? 'SET' : 'NOT SET',
+  'prowlarr.apiKey': serverConfig.prowlarr.apiKey ? 'SET' : 'NOT SET',
+  'tmdb.apiKey': serverConfig.tmdb.apiKey ? 'SET' : 'NOT SET',
+  'features.useRealData': serverConfig.features.useRealData,
+  'features.useTMDb': serverConfig.features.useTMDb
+});
 
 // Validate required configuration on startup
 const validateConfig = () => {

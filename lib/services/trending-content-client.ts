@@ -49,15 +49,18 @@ export class TrendingContentClient {
    */
   async getTrendingMovies(options: TrendingOptions = {}): Promise<FeaturedItem[]> {
     console.log('[TrendingContentClient] Fetching trending movies with options:', options);
+    console.log('[TrendingContentClient] Using prowlarrClient:', !!this.prowlarrClient);
     
     try {
-      // Search for trending movies
+      // Search for trending movies - use a wildcard query to ensure we get results
       const results = await this.prowlarrClient.search({
-        query: '2023 OR 2024 1080p OR 2160p',
-        categories: ['2000', '2010', '2020', '2030', '2040', '2045', '2050', '2060'], // Movie categories
-        minSeeders: options.minSeeders || 10,
+        query: '*', // Wildcard query to match everything
+        type: 'movie',
+        minSeeders: options.minSeeders || 5, // Reduced minimum seeders to get more results
         limit: options.limit || 20
       });
+      
+      console.log(`[TrendingContentClient] Raw search returned ${results.length} movie results`);
       
       // Convert to FeaturedItems
       const featuredItems = results.map(result => this.prowlarrClient.convertToFeaturedItem(result));
@@ -83,13 +86,15 @@ export class TrendingContentClient {
     console.log('[TrendingContentClient] Fetching popular TV shows with options:', options);
     
     try {
-      // Search for popular TV shows
+      // Search for popular TV shows with wildcard query
       const results = await this.prowlarrClient.search({
-        query: 'S01 OR S02 OR "Season 1" OR "Season 2" 1080p',
-        categories: ['5000', '5020', '5030', '5040', '5045', '5050', '5060', '5070', '5080'], // TV categories
-        minSeeders: options.minSeeders || 5,
-        limit: options.limit || 20
+        query: '*', // Wildcard query to match everything
+        minSeeders: options.minSeeders || 3, // Reduced minimum seeders
+        limit: options.limit || 20,
+        type: 'tv' // Explicitly search for TV shows
       });
+      
+      console.log(`[TrendingContentClient] Raw search returned ${results.length} TV show results`);
       
       // Convert to FeaturedItems
       const featuredItems = results.map(result => this.prowlarrClient.convertToFeaturedItem(result));
@@ -115,13 +120,17 @@ export class TrendingContentClient {
     console.log('[TrendingContentClient] Fetching new releases with options:', options);
     
     try {
-      // Search for new releases
+      // Search for new releases (movies released this year)
+      const currentYear = new Date().getFullYear();
+      // Use wildcards and the current year in the query
       const results = await this.prowlarrClient.search({
-        query: '2024 1080p OR 2160p',
-        categories: ['2000', '2010', '2020', '2030', '2040', '2045', '2050', '2060'], // Movie categories
-        minSeeders: options.minSeeders || 5,
-        limit: options.limit || 20
+        query: `${currentYear} OR "${currentYear}"`, // Search for current year
+        minSeeders: options.minSeeders || 3,
+        limit: options.limit || 20,
+        type: 'movie' // Search for movies
       });
+      
+      console.log(`[TrendingContentClient] Raw search returned ${results.length} new release results`);
       
       // Convert to FeaturedItems
       const featuredItems = results.map(result => this.prowlarrClient.convertToFeaturedItem(result));
@@ -147,13 +156,15 @@ export class TrendingContentClient {
     console.log('[TrendingContentClient] Fetching 4K content with options:', options);
     
     try {
-      // Search for 4K content
+      // Search for 4K content (movies and TV shows in 4K)
+      // Use a more comprehensive query with alternative spellings and wildcards
       const results = await this.prowlarrClient.search({
-        query: '2160p OR 4K OR UHD',
-        categories: ['2000', '2010', '2020', '2030', '2040', '2045', '2050', '2060', '5000', '5020'], // Movie and TV categories
-        minSeeders: options.minSeeders || 5,
+        query: '4K OR 2160p OR UHD OR "Ultra HD"', // Enhanced search for 4K keywords
+        minSeeders: options.minSeeders || 3, // Lower minimum seeders to get more results
         limit: options.limit || 20
       });
+      
+      console.log(`[TrendingContentClient] Raw search returned ${results.length} 4K content results`);
       
       // Convert to FeaturedItems
       const featuredItems = results.map(result => this.prowlarrClient.convertToFeaturedItem(result));
@@ -179,12 +190,28 @@ export class TrendingContentClient {
     console.log('[TrendingContentClient] Fetching documentaries with options:', options);
     
     try {
-      // Search for documentaries
+      // Search for documentaries with improved search terms
       const results = await this.prowlarrClient.search({
-        query: 'documentary OR bbc OR national geographic OR discovery',
-        categories: ['2000', '2030', '5000', '5080'], // Documentary categories
-        minSeeders: options.minSeeders || 3,
+        query: 'documentary OR "BBC Documentary" OR "National Geographic" OR "Discovery Channel" OR "History Channel"',
+        minSeeders: options.minSeeders || 2, // Lower minimum seeders to get more results
         limit: options.limit || 20
+      });
+      
+      console.log(`[TrendingContentClient] Raw search returned ${results.length} documentary results`);
+      
+      // Determine media type based on categories
+      const isTV = results.some(result => {
+        // Categories from Prowlarr can be either strings or objects with a 'name' property
+        return result.categories.some(cat => {
+          // If category is an object with a name property, use that
+          const categoryName = typeof cat === 'object' && cat !== null && 'name' in cat 
+            ? String(cat.name) 
+            : String(cat);
+
+          return categoryName.toLowerCase().includes('tv') || 
+                 categoryName.toLowerCase().includes('series') ||
+                 categoryName.toLowerCase().includes('show');
+        });
       });
       
       // Convert to FeaturedItems

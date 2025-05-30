@@ -5,9 +5,10 @@ import MediaCard from './MediaCard';
 
 interface CategoryRowProps {
   category: FeaturedCategory;
+  onAddToLibrary?: (guid: string, mediaType: 'movie' | 'tv', indexerId: string | number, title: string) => void;
 }
 
-const CategoryRow: React.FC<CategoryRowProps> = ({ category }) => {
+const CategoryRow: React.FC<CategoryRowProps> = ({ category, onAddToLibrary }) => {
   return (
     <section className="mb-8">
       <div className="flex items-center justify-between mb-4">
@@ -28,7 +29,7 @@ const CategoryRow: React.FC<CategoryRowProps> = ({ category }) => {
         <div className="overflow-x-auto pb-4 hide-scrollbar">
           <div className="flex space-x-4">
             {category.items.map((item) => (
-              <MediaCard key={item.guid} item={item} />
+              <MediaCard key={item.guid} item={item} onAddToLibrary={onAddToLibrary} />
             ))}
           </div>
         </div>

@@ -13,23 +13,82 @@ export class RedisService {
   private client: Redis;
   
   private constructor() {
-    const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-    
-    this.client = new Redis(redisUrl, {
-      maxRetriesPerRequest: 3,
-      retryStrategy: (times: number) => {
-        const delay = Math.min(times * 50, 2000);
-        return delay;
-      },
-      reconnectOnError: (err: Error) => {
-        const targetError = 'READONLY';
-        if (err.message.includes(targetError)) {
-          // Only reconnect when the error contains "READONLY"
-          return true;
-        }
-        return false;
+    try {
+      // First try the environment variable
+      const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+      console.log(`[RedisService] Attempting to connect to Redis at ${redisUrl}`);
+      
+      // Parse the Redis URL to extract host, port, etc.
+      const url = new URL(redisUrl);
+      
+      // Get password if provided, but ONLY if it's not an empty string
+      let password = process.env.REDIS_PASSWORD || url.password || undefined;
+      
+      // If password exists but is empty, set it to undefined to avoid authentication attempts
+      if (password === '') {
+        password = undefined;
       }
-    });
+      
+      console.log(`[RedisService] Password supplied: ${password ? 'Yes (not shown)' : 'No'}`); 
+      
+      // Create the Redis client with the appropriate configuration
+      this.client = new Redis({
+        host: url.hostname,
+        port: url.port ? parseInt(url.port) : 6379,
+        password: password || undefined, // Only provide password if it actually exists
+        maxRetriesPerRequest: 3,
+        connectTimeout: 5000, // 5 seconds timeout
+        retryStrategy: (times: number) => {
+          // If we've tried more than 3 times, and we're connecting to 'redis' host,
+          // try localhost instead for development purposes
+          if (times > 3 && url.hostname === 'redis') {
+            console.log('[RedisService] Could not connect to redis host, trying localhost...');
+            const localClient = new Redis({
+              host: 'localhost',
+              port: 6379,
+              maxRetriesPerRequest: 3,
+              connectTimeout: 5000
+            });
+            this.client = localClient;
+            return null; // Stop retrying with the original configuration
+          }
+          
+          const delay = Math.min(times * 100, 3000);
+          return delay;
+        },
+        reconnectOnError: (err: Error) => {
+          const errorMsg = err.message;
+          console.error('[RedisService] Reconnect on error:', errorMsg);
+          
+          // If the error is about authentication when no password is needed,
+          // reconnect without password
+          if (errorMsg.includes('AUTH') && errorMsg.includes('without any password configured')) {
+            console.log('[RedisService] Redis server does not require authentication. Reconnecting without password...');
+            
+            // Create a new client without a password and replace the current one
+            const newClient = new Redis({
+              host: url.hostname,
+              port: url.port ? parseInt(url.port) : 6379,
+              maxRetriesPerRequest: 3,
+              connectTimeout: 5000
+            });
+            
+            this.client = newClient;
+            return false; // Don't reconnect with the original client
+          }
+          
+          return true; // Otherwise attempt to reconnect
+        }
+      });
+    } catch (error) {
+      console.error('[RedisService] Error initializing Redis client:', error);
+      // Create a minimal client that will at least not crash the app
+      this.client = new Redis({
+        host: 'localhost',
+        port: 6379,
+        lazyConnect: true // Don't connect immediately
+      });
+    }
     
     this.client.on('error', (error) => {
       console.error('[RedisService] Redis connection error:', error);

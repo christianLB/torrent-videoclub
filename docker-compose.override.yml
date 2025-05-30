@@ -4,7 +4,7 @@ services:
   app:
     build:
       context: .
-      target: development
+      target: builder
     volumes:
       - .:/app
       - /app/node_modules
@@ -24,7 +24,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-your-redis-password}
+    command: redis-server --appendonly yes
     volumes:
       - redis-data:/data
     healthcheck:

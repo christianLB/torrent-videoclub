@@ -5,6 +5,12 @@
  */
 import { FeaturedItem } from '../types/featured';
 
+// Define category object type as returned by some indexers
+interface ProwlarrCategory {
+  id: number;
+  name: string;
+}
+
 // Define the shape of a Prowlarr search result
 interface ProwlarrResult {
   guid: string;
@@ -14,7 +20,7 @@ interface ProwlarrResult {
   size: number;
   seeders: number;
   leechers: number;
-  categories: string[];
+  categories: (string | ProwlarrCategory)[]; // Categories can be strings or objects with name property
   downloadUrl: string;
   infoUrl: string;
   protocol: string;
@@ -27,6 +33,7 @@ export interface SearchParams {
   limit?: number;
   offset?: number;
   minSeeders?: number;
+  type?: 'movie' | 'tv' | 'search';
 }
 
 export class ProwlarrClient {
@@ -47,27 +54,61 @@ export class ProwlarrClient {
       console.log(`[ProwlarrClient] Searching with params:`, {
         query: params.query,
         categories: params.categories,
-        limit: params.limit
+        limit: params.limit,
+        type: params.type
       });
       
       // Construct the search URL with query parameters
-      const queryString = new URLSearchParams({
+      const queryParams: Record<string, string> = {
         apikey: this.apiKey,
-        query: params.query || '',
-        categories: params.categories?.join(',') || '',
+        query: params.query || '*',
         limit: (params.limit || 100).toString(),
         offset: (params.offset || 0).toString()
-      }).toString();
+      };
       
+      // Add categories if specified
+      if (params.categories && params.categories.length > 0) {
+        queryParams.categories = params.categories.join(',');
+      }
+      
+      // Add type-specific parameters
+      if (params.type === 'movie') {
+        queryParams.type = 'movie';
+        // Ensure we're searching in movie categories if none specified
+        if (!params.categories || params.categories.length === 0) {
+          queryParams.categories = '2000';
+        }
+      } else if (params.type === 'tv') {
+        queryParams.type = 'tvsearch';
+        // Ensure we're searching in TV categories if none specified
+        if (!params.categories || params.categories.length === 0) {
+          queryParams.categories = '5000';
+        }
+      }
+      
+      const queryString = new URLSearchParams(queryParams).toString();
       const url = `${this.apiUrl}/api/v1/search?${queryString}`;
+      
+      // Log the full URL (with API key partially hidden for security)
+      const logUrl = url.replace(this.apiKey, this.apiKey.substring(0, 5) + '...' + this.apiKey.substring(this.apiKey.length - 3));
+      console.log(`[ProwlarrClient] Making API request to: ${logUrl}`);
       
       // Make the request
       const response = await fetch(url);
       
       if (!response.ok) {
-        console.warn(`[ProwlarrClient] API request failed: ${response.status} ${response.statusText}`);
+        console.error(`[ProwlarrClient] API request failed: ${response.status} ${response.statusText}`);
+        try {
+          const errorText = await response.text();
+          console.error(`[ProwlarrClient] Error response: ${errorText}`);
+        } catch (e) {
+          console.error('[ProwlarrClient] Could not read error response');
+        }
         return [];
       }
+      
+      console.log(`[ProwlarrClient] API request successful: ${response.status}`);
+      
       
       const data = await response.json();
       
@@ -104,11 +145,17 @@ export class ProwlarrClient {
     const quality = qualityMatch ? qualityMatch[0].toLowerCase() : undefined;
     
     // Determine media type based on categories
-    const isTV = result.categories.some(cat => 
-      cat.toLowerCase().includes('tv') || 
-      cat.toLowerCase().includes('series') ||
-      cat.toLowerCase().includes('show')
-    );
+    // Handle both string categories and object categories with name property
+    const isTV = result.categories.some(cat => {
+      // Check if category is an object with a name property
+      const categoryStr = typeof cat === 'object' && cat !== null && cat.name ? 
+        cat.name.toString() : 
+        (typeof cat === 'string' ? cat : String(cat));
+      
+      return categoryStr.toLowerCase().includes('tv') || 
+             categoryStr.toLowerCase().includes('series') ||
+             categoryStr.toLowerCase().includes('show');
+    });
     
     // Generate a unique ID
     const id = `prowlarr-${result.guid.replace(/[^a-zA-Z0-9]/g, '')}`;
