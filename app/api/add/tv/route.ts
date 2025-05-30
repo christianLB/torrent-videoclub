@@ -78,13 +78,13 @@ export async function POST(request: Request) {
       );
     }
 
-    // Add TV series to Sonarr
-    const sonarrSeries = await sonarrClient.addSeries({
-      tvdbId: seriesDetails.tvdb_id, 
+    // Prepare Sonarr series data
+    const seriesDataForSonarr = {
+      tvdbId: seriesDetails.tvdb_id,
       title: seriesDetails.title || 'Unknown Series',
       year: seriesDetails.firstAirDate ? new Date(seriesDetails.firstAirDate).getFullYear() : 0,
       qualityProfileId: qualityProfileIdToUse,
-      rootFolderPath: process.env.SONARR_ROOT_FOLDER_PATH || '', // Allow override or use Sonarr's first available
+      rootFolderPath: '', // Let SonarrClient determine this from Sonarr's available root folders
       seasonFolder: true,
       monitored: true,
       addOptions: {
@@ -92,7 +92,12 @@ export async function POST(request: Request) {
         ignoreEpisodesWithoutFiles: false,
         searchForMissingEpisodes: true, // Automatically search for episodes after adding
       },
-    });
+    };
+
+    console.log('[Sonarr AddTV] Attempting to add series with payload:', JSON.stringify(seriesDataForSonarr, null, 2));
+
+    // Add TV series to Sonarr
+    const sonarrSeries = await sonarrClient.addSeries(seriesDataForSonarr);
 
     return NextResponse.json({
       success: true,
