@@ -152,7 +152,7 @@ describe('FeaturedCarousel (Data Fetching)', () => {
   
   it('renders item with missing title using fallback', async () => {
     const itemsWithMissingTitle: CarouselItem[] = [
-      { tmdbId: 102, title: undefined as any, mediaType: 'tv', backdropPath: '/tv_backdrop.jpg', overview: 'Overview here.' }
+      { tmdbId: 102, title: undefined, mediaType: 'tv', backdropPath: '/tv_backdrop.jpg', overview: 'Overview here.' }
     ];
     (fetch as Mock).mockResolvedValueOnce({
       ok: true,

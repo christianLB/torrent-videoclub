@@ -4,10 +4,10 @@
  * This endpoint allows client-side code to trigger cache clearing
  * without directly importing Redis-dependent services.
  */
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { CuratorService } from '@/lib/services/curator-service';
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     await CuratorService.clearCache();
     

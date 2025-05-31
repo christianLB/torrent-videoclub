@@ -21,20 +21,18 @@ export async function GET() {
 
     return NextResponse.json({ tmdbIds });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API/sonarr/library] Error fetching Sonarr library TMDB IDs:', error);
     let errorMessage = 'Failed to fetch Sonarr library status.';
-    if (error.message) {
+    if (error instanceof Error) {
       errorMessage = error.message;
+      // Check for connection refused or Sonarr specific errors
+      if ('code' in error && error.code === 'ECONNREFUSED') {
+        errorMessage = 'Sonarr instance is not reachable. Please check if Sonarr is running and accessible.';
+      }
+    } else if (typeof error === 'string') {
+      errorMessage = error;
     }
-    // Check for connection refused or Sonarr specific errors
-    if (error.message && (error.message.includes('ECONNREFUSED') || error.message.toLowerCase().includes('sonarr'))) {
-      errorMessage = 'Could not connect to Sonarr. Please check configuration and ensure Sonarr is running.';
-    }
-    
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

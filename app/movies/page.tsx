@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { FilterBar, FilterOptions } from '@/components/filter-bar';
 import { SearchBar } from '@/components/search-bar';
 import { useNotification } from '@/components/notification-context';
@@ -35,8 +35,8 @@ export default function MoviesPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { showNotification } = useNotification();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [genres, setGenres] = useState<{ id: number; name: string }[]>([
+  const [genres] = useState<{ id: number; name: string }[]>( // setSearchQuery and searchQuery were unused, setGenres was unused
+[
     { id: 28, name: 'Action' },
     { id: 12, name: 'Adventure' },
     { id: 16, name: 'Animation' },

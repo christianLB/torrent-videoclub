@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/navbar';
 import MediaCard from './MediaCard';
-import { FeaturedCategory } from '@/lib/types/featured';
+import { FeaturedCategory, FeaturedItem } from '@/lib/types/featured';
+import { TMDBMediaItem } from '@/lib/types/tmdb';
 // No need for client-side cache refresh
 
 interface CategoryPageProps {
@@ -103,7 +104,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ categoryId }) => {
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (page - 1) * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
-  const currentItems = category.items.slice(startIndex, endIndex);
+  const currentItems: FeaturedItem[] = category.items.slice(startIndex, endIndex);
 
   return (
     <main className="bg-gray-900 text-white min-h-screen">
@@ -130,9 +131,23 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ categoryId }) => {
         
         {/* Media Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-          {currentItems.map((item) => (
-            <MediaCard key={item.guid} item={item} />
-          ))}
+          {currentItems.map((item) => {
+            // Adapt FeaturedItem to TMDBMediaItem for MediaCard compatibility
+            const tmdbItem: TMDBMediaItem = {
+              tmdbId: item.tmdbInfo?.tmdbId || 0,
+              mediaType: item.mediaType,
+              title: item.displayTitle || item.title,
+              overview: item.tmdbInfo?.overview || '',
+              posterPath: item.tmdbInfo?.posterPath,
+              backdropPath: item.tmdbInfo?.backdropPath,
+              voteAverage: item.tmdbInfo?.voteAverage,
+              releaseDate: item.tmdbInfo?.releaseDate,
+              genres: item.tmdbInfo?.genreIds ? [] : undefined // Genre IDs need mapping to genre objects
+            };
+            return (
+              <MediaCard key={item.guid} item={tmdbItem} inLibrary={item.inLibrary} />
+            );
+          })}
         </div>
         
         {/* Pagination */}

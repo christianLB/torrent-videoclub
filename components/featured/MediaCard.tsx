@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import { TMDBMediaItem } from '@/lib/types/tmdb'; // Replaced old types
-import DownloadIndicator from './DownloadIndicator';
-import LibraryIndicator from './LibraryIndicator';
 import { toast } from 'react-hot-toast';
 
 interface MediaCardProps {

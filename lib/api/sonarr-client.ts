@@ -25,7 +25,8 @@ export interface SonarrSeriesResponse {
   title: string;
   tvdbId: number;
   year: number;
-  [key: string]: any;
+  tmdbId?: number; // Added to correctly type this optional property
+  [key: string]: unknown;
 }
 
 export interface SonarrRootFolder {
@@ -33,9 +34,9 @@ export interface SonarrRootFolder {
   path: string;
   freeSpace?: number;
   totalSpace?: number;
-  unmappedFolders?: any[]; // Or a more specific type if known
+  unmappedFolders?: unknown[]; // Or a more specific type if known
   accessible: boolean;
-  [key: string]: any; // For any other properties Sonarr might send
+  [key: string]: unknown; // For any other properties Sonarr might send
 }
 
 export interface SonarrQualityProfile {
@@ -95,13 +96,13 @@ export class SonarrClient {
         const errorData = await response.json();
         // Sonarr errors are often an array of objects with a 'errorMessage' field
         if (Array.isArray(errorData) && errorData.length > 0 && errorData[0].errorMessage) {
-          sonarrErrorMessage = errorData.map((err: any) => err.errorMessage || 'Unknown Sonarr error detail').join(', ');
+          sonarrErrorMessage = errorData.map((err: { errorMessage?: string }) => err.errorMessage || 'Unknown Sonarr error detail').join(', ');
         } else if (errorData.message) { // Or sometimes a single object with 'message'
           sonarrErrorMessage = errorData.message;
         } else if (errorData.error) { // Or 'error'
           sonarrErrorMessage = errorData.error;
         }
-      } catch (e) {
+      } catch {
         // Failed to parse error JSON, or it's not in expected format
         sonarrErrorMessage = 'Could not parse Sonarr error response.';
       }
@@ -155,7 +156,7 @@ export class SonarrClient {
         let errorText = '';
         try {
           errorText = await response.text();
-        } catch (e) { /* ignore */ }
+        } catch { /* ignore */ }
         throw new Error(`Failed to get root folders from Sonarr: ${response.status} ${response.statusText}${errorText ? ' - ' + errorText : ''}`);
       }
       const rootFolders: SonarrRootFolder[] = await response.json();
@@ -187,7 +188,7 @@ export class SonarrClient {
         let errorText = '';
         try {
           errorText = await response.text();
-        } catch (e) {
+        } catch {
           // Ignore if can't read text
         }
         throw new Error(
@@ -199,7 +200,7 @@ export class SonarrClient {
       // Sonarr's series objects should have a tmdbId field.
       const tmdbIds = seriesList
         .map(series => series.tmdbId) // Assuming tmdbId is directly available and is a number
-        .filter(id => typeof id === 'number' && !isNaN(id));
+        .filter((id): id is number => typeof id === 'number' && !isNaN(id));
       
       console.log(`[SonarrClient] Found ${tmdbIds.length} series in Sonarr library with TMDB IDs.`);
       return tmdbIds;

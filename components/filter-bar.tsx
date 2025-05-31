@@ -20,7 +20,7 @@ export function FilterBar({ onFilterChange, genres }: FilterBarProps) {
   
   const resolutions = ['480p', '720p', '1080p', '2160p', '4K'];
   
-  const handleFilterChange = (key: keyof FilterOptions, value: any) => {
+  const handleFilterChange = (key: keyof FilterOptions, value: string) => {
     const newFilters = { 
       ...filters, 
       [key]: value === '' ? undefined : key === 'minRating' || key === 'year' ? Number(value) : value 

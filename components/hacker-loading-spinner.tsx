@@ -2,6 +2,26 @@
 
 import { useState, useEffect } from 'react';
 
+// Hacker-style loading messages
+const loadingMessages = [
+  'Establishing secure connection',
+  'Scanning network',
+  'Bypassing firewall',
+  'Decrypting data blocks',
+  'Accessing trackers',
+  'Parsing metadata',
+  'Analyzing media signatures',
+  'Verifying authenticity',
+  'Initializing torrent stream',
+  'Fetching peer list',
+  'Connecting to swarm',
+  'Downloading chunks',
+  'Buffering video data',
+  'Optimizing playback',
+  'Almost there...',
+  'Loading complete!'
+];
+
 interface HackerLoadingSpinnerProps {
   size?: 'small' | 'medium' | 'large';
   message?: string;
@@ -28,22 +48,6 @@ export function HackerLoadingSpinner({
     medium: 'text-sm',
     large: 'text-base'
   };
-  
-  // Hacker-style loading messages
-  const loadingMessages = [
-    'Establishing secure connection',
-    'Scanning network',
-    'Bypassing firewall',
-    'Decrypting data blocks',
-    'Accessing trackers',
-    'Parsing metadata',
-    'Analyzing media signatures',
-    'Verifying authenticity',
-    'Breaking encryption',
-    'Calculating optimal routes',
-    'Negotiating transfer protocols',
-    'Authenticating credentials',
-  ];
   
   // Animate the dots
   useEffect(() => {

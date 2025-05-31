@@ -26,10 +26,12 @@ jest.mock('embla-carousel-autoplay', () => jest.fn(() => ({ init: jest.fn(), des
 
 // Mock Next.js Link component
 jest.mock('next/link', () => {
-  return ({ children, href }: { children: React.ReactNode; href: string }) => {
-    // eslint-disable-next-line jsx-a11y/anchor-is-valid
+  const MockedLink = ({ children, href }: { children: React.ReactNode; href: string }) => {
+
     return <a href={href}>{children}</a>;
   };
+  MockedLink.displayName = 'MockedNextLink';
+  return MockedLink;
 });
 
 global.fetch = jest.fn();

@@ -7,8 +7,42 @@
  */
 
 import { EnhancedMediaItem } from '../types/featured';
-import { TMDbClient, TMDbSearchResult, TMDbMovieDetails, TMDbTvShowDetails } from '../api/tmdb-client';
+import { TMDbClient } from '../api/tmdb-client';
 import { NormalizedMovieResult } from '../api/prowlarr-client';
+
+// Extended type for NormalizedMovieResult with optional additional properties
+type ExtendedMovieResult = NormalizedMovieResult & {
+  infoUrl?: string;
+  downloadUrl?: string;
+  publishDate?: string;
+};
+
+// Interface for TMDb search results to avoid 'unknown' type issues
+interface TMDbResult {
+  id: number;
+  title?: string;
+  name?: string;
+  original_title?: string;
+  original_name?: string;
+  overview?: string;
+  poster_path?: string | null;
+  backdrop_path?: string | null;
+  release_date?: string;
+  first_air_date?: string;
+  vote_average?: number;
+  vote_count?: number;
+  genres?: Array<{ id: number; name: string }>;
+  genre_ids?: number[];
+  popularity?: number;
+  media_type?: 'movie' | 'tv';
+  number_of_seasons?: number;
+  number_of_episodes?: number;
+  runtime?: number;
+  episode_run_time?: number[];
+  external_ids?: {
+    tvdb_id?: number | string;
+  };
+}
 
 /**
  * Service for enriching media items with metadata from TMDb
@@ -43,29 +77,49 @@ export class MetadataEnricher {
    * @param item Movie result to enrich
    * @returns Enriched media item with TMDb metadata
    */
-  static async enrichMovie(item: NormalizedMovieResult): Promise<EnhancedMediaItem> {
+  static async enrichMovie(item: ExtendedMovieResult): Promise<EnhancedMediaItem> {
     if (!this.enabled || !this.tmdbClient) {
-      return this.createBasicEnhancedItem(item);
+      return this.createBasicEnhancedItem(item, 'movie');
     }
     
     try {
       // Search for the movie on TMDb
-      const query = this.cleanTitleForSearch(item.title);
+      const query = this.normalizeTitle(item.title);
       const year = item.year ? item.year.toString() : undefined;
       
       // TMDb client expects just the query string, we'll filter by year after
       const searchResults = await this.tmdbClient.searchMovies(query);
       
       // Filter by year if provided
-      const filteredResults = year 
-        ? searchResults.filter(result => result.year?.toString() === year)
+      const filteredResults = year && searchResults.length > 0
+        ? searchResults.filter(result => {
+            // Need to convert TMDBMediaItem to match TMDbResult structure
+            const releaseYear = result.releaseDate?.substring(0, 4);
+            return releaseYear === year;
+          })
         : searchResults;
       
       const resultsToUse = filteredResults.length > 0 ? filteredResults : searchResults;
       
       // If we found a match, get the movie details
       if (resultsToUse && resultsToUse.length > 0) {
-        const bestMatch = this.findBestMatch(resultsToUse, item.title);
+        // Convert TMDBMediaItem[] to TMDbResult[] for the best match finder
+        const resultsAsSearchFormat: TMDbResult[] = resultsToUse.map(result => ({
+          id: result.tmdbId,
+          title: result.title,
+          overview: result.overview || '',
+          poster_path: result.posterPath,
+          backdrop_path: result.backdropPath,
+          release_date: result.releaseDate,
+          vote_average: result.voteAverage,
+          genre_ids: result.genres?.map(g => g.id)
+        }));
+        
+        const bestMatch = this.findBestMatch(resultsAsSearchFormat, item.title);
+        if (!bestMatch) {
+          return this.createBasicEnhancedItem(item, 'movie');
+        }
+        
         const movieDetails = await this.tmdbClient.getMovieDetails(bestMatch.id);
         
         // Extract year from release date if available
@@ -74,42 +128,43 @@ export class MetadataEnricher {
           : (item.year || new Date().getFullYear());
 
         // Create the enhanced item with TMDb metadata
-        return {
-          id: item.guid || `movie-${Date.now()}`,
-          title: movieDetails?.title || bestMatch.title || item.title,
-          overview: movieDetails?.overview || bestMatch.overview || item.title,
-          backdropPath: movieDetails?.backdropPath || bestMatch.backdropPath || '/api/placeholder/1920/1080',
-          posterPath: movieDetails?.posterPath || bestMatch.posterPath || '/api/placeholder/500/750',
-          mediaType: 'movie',
-          rating: movieDetails?.voteAverage || bestMatch.voteAverage || 0,
-          year,
-          genres: movieDetails?.genres?.map((g: { name: string }) => g.name) || [],
-          runtime: movieDetails?.runtime || 0,
-          inLibrary: false,
-          downloading: false,
-          tmdbAvailable: true,
+        const enhancedItem = this.createBasicEnhancedItem(item, 'movie');
+        
+        // Add TMDb info
+        enhancedItem.tmdbInfo = {
           tmdbId: bestMatch.id,
-          tmdb: {
-            id: bestMatch.id,
-            title: movieDetails?.title || bestMatch.title,
-            releaseDate: movieDetails?.releaseDate || bestMatch.releaseDate,
-            year,
-            posterPath: movieDetails?.posterPath || bestMatch.posterPath,
-            backdropPath: movieDetails?.backdropPath || bestMatch.backdropPath,
-            voteAverage: movieDetails?.voteAverage || bestMatch.voteAverage,
-            genreIds: movieDetails?.genres 
-              ? movieDetails.genres.map((g: { id: number }) => g.id) 
-              : bestMatch.genreIds,
-            overview: movieDetails?.overview || ''
-          }
+          title: movieDetails?.title || bestMatch.title || item.title,
+          overview: movieDetails?.overview || bestMatch.overview || '',
+          posterPath: movieDetails?.posterPath || bestMatch.poster_path || undefined,
+          backdropPath: movieDetails?.backdropPath || bestMatch.backdrop_path || undefined,
+          voteAverage: movieDetails?.voteAverage || bestMatch.vote_average || 0,
+          year: year,
+          genreIds: movieDetails?.genres ? movieDetails.genres.map((g: { id: number }) => g.id) : (bestMatch.genre_ids || []),
+          runtime: movieDetails?.runtime || 0
         };
+        
+        // Set display fields
+        enhancedItem.displayTitle = enhancedItem.tmdbInfo?.title || item.title;
+        enhancedItem.displayOverview = enhancedItem.tmdbInfo?.overview || '';
+        enhancedItem.displayYear = enhancedItem.tmdbInfo?.year || year;
+        enhancedItem.displayRating = enhancedItem.tmdbInfo?.voteAverage || 0;
+        enhancedItem.displayGenres = movieDetails?.genres?.map((g: { name: string }) => g.name) || [];
+        
+        // Set paths for UI display
+        enhancedItem.fullPosterPath = enhancedItem.tmdbInfo?.posterPath 
+          ? `https://image.tmdb.org/t/p/w500${enhancedItem.tmdbInfo.posterPath}`
+          : '/api/placeholder/500/750';
+        
+        enhancedItem.fullBackdropPath = enhancedItem.tmdbInfo?.backdropPath
+          ? `https://image.tmdb.org/t/p/original${enhancedItem.tmdbInfo.backdropPath}`
+          : '/api/placeholder/1920/1080';
       }
       
       // If no match was found, return a basic enhanced item
-      return this.createBasicEnhancedItem(item);
+      return this.createBasicEnhancedItem(item, 'movie');
     } catch (error) {
       console.error('Error enriching movie with TMDb metadata:', error);
-      return this.createBasicEnhancedItem(item);
+      return this.createBasicEnhancedItem(item, 'movie');
     }
   }
   
@@ -118,101 +173,160 @@ export class MetadataEnricher {
    * @param item TV series result to enrich
    * @returns Enriched media item with TMDb metadata
    */
-  static async enrichTVSeries(item: NormalizedMovieResult): Promise<EnhancedMediaItem> {
+  static async enrichTVSeries(item: ExtendedMovieResult): Promise<EnhancedMediaItem> {
     if (!this.enabled || !this.tmdbClient) {
-      return this.createBasicEnhancedItem(item);
+      return this.createBasicEnhancedItem(item, 'tv');
     }
     
     try {
-      // Search for the TV series on TMDb
-      const query = this.cleanTitleForSearch(item.title);
+      // Clean the title for search
+      const searchTitle = this.normalizeTitle(item.title);
       
-      const searchResults = await this.tmdbClient.searchTvShows(query);
-      
-      // If we found a match, get the TV series details
-      if (searchResults && searchResults.length > 0) {
-        const bestMatch = this.findBestMatch(searchResults, item.title);
-        const tvDetails = await this.tmdbClient.getTvShowDetails(bestMatch.id);
-        
-        // Extract year from first air date if available
-        const year = tvDetails?.firstAirDate 
-          ? parseInt(tvDetails.firstAirDate.substring(0, 4), 10) 
-          : (item.year || new Date().getFullYear());
-
-        // Create the enhanced item with TMDb metadata
-        return {
-          id: item.guid || `tv-${Date.now()}`,
-          title: tvDetails?.name || bestMatch.name || item.title,
-          overview: tvDetails?.overview || bestMatch.overview || item.title,
-          backdropPath: tvDetails?.backdropPath || bestMatch.backdropPath || '/api/placeholder/1920/1080',
-          posterPath: tvDetails?.posterPath || bestMatch.posterPath || '/api/placeholder/500/750',
-          mediaType: 'tv',
-          rating: tvDetails?.voteAverage || bestMatch.voteAverage || 0,
-          year,
-          genres: tvDetails?.genres?.map((g: { name: string }) => g.name) || [],
-          seasons: tvDetails?.number_of_seasons || 1,
-          inLibrary: false,
-          downloading: false,
-          tmdbAvailable: true,
-          tmdbId: bestMatch.id,
-          tmdb: {
-            id: bestMatch.id,
-            title: tvDetails?.name || bestMatch.name,
-            releaseDate: tvDetails?.firstAirDate || bestMatch.firstAirDate,
-            year,
-            posterPath: tvDetails?.posterPath || bestMatch.posterPath,
-            backdropPath: tvDetails?.backdropPath || bestMatch.backdropPath,
-            voteAverage: tvDetails?.voteAverage || bestMatch.voteAverage,
-            genreIds: tvDetails?.genres 
-              ? tvDetails.genres.map((g: { id: number }) => g.id) 
-              : bestMatch.genreIds,
-            overview: tvDetails?.overview || ''
-          }
-        };
+      // Search for TV show by title
+      const searchResults = await this.tmdbClient.searchTvShows(searchTitle);
+      if (!searchResults || searchResults.length === 0) {
+        console.log(`No TMDb results found for TV show: ${searchTitle}`);
+        return this.createBasicEnhancedItem(item, 'tv');
       }
+
+      // Find best match
+      const resultsAsSearchFormat = searchResults.map(item => ({
+        id: item.tmdbId,
+        name: item.title, // For TV shows, title is stored in name in raw API results
+        overview: item.overview,
+        poster_path: item.posterPath,
+        backdrop_path: item.backdropPath,
+        first_air_date: item.firstAirDate,
+        vote_average: item.voteAverage,
+        genre_ids: item.genres?.map(g => g.id)
+      }));
+      const bestMatch = this.findBestMatch(resultsAsSearchFormat, searchTitle);
+      const tvDetails = await this.tmdbClient.getTvShowDetails(bestMatch.id);
+        
+      // Extract year from first air date if available
+      // This year variable will be used in both tmdbInfo and displayYear
+      const year = tvDetails?.firstAirDate 
+        ? parseInt(tvDetails.firstAirDate.substring(0, 4), 10) 
+        : (item.year || this.extractYearFromTitle(item.title) || new Date().getFullYear());
+
+      // Create the enriched item with TMDb metadata
+      const enhancedItem: EnhancedMediaItem = {
+        guid: item.guid || `tv-${Date.now()}`,
+        indexerId: item.indexer || '', // Map indexer to indexerId
+        title: item.title, // Keep original title from Prowlarr
+        size: item.size,
+        protocol: 'torrent', // Default protocol
+        seeders: item.seeders,
+        leechers: item.leechers,
+        quality: item.quality,
+        publishDate: new Date().toISOString(), // Default publishDate
+        infoUrl: item.infoUrl || '',
+        downloadUrl: item.downloadUrl || '',
+        mediaType: 'tv',
+        // TMDb enrichment data
+        tmdbInfo: {
+          tmdbId: bestMatch.id,
+          title: bestMatch.name,
+          overview: bestMatch.overview,
+          posterPath: bestMatch.poster_path || undefined,
+          backdropPath: bestMatch.backdrop_path || undefined,
+          voteAverage: bestMatch.vote_average,
+          year: year,
+          runtime: tvDetails?.episodeRunTime?.[0],
+          genreIds: tvDetails?.genres?.map(g => g.id) || bestMatch.genre_ids || []
+        },
+        // Display fields
+        displayTitle: bestMatch.name || item.title,
+        displayOverview: bestMatch.overview || '',
+        displayYear: year,
+        displayRating: bestMatch.vote_average,
+        displayGenres: tvDetails?.genres?.map(g => g.name)
+      };
+      return enhancedItem;
       
       // If no match was found, return a basic enhanced item
-      return this.createBasicEnhancedItem(item);
+      return this.createBasicEnhancedItem(item, 'tv');
     } catch (error) {
       console.error('Error enriching TV series with TMDb metadata:', error);
-      return this.createBasicEnhancedItem(item);
+      return this.createBasicEnhancedItem(item, 'tv');
     }
   }
   
   /**
    * Create a basic enhanced media item without TMDb metadata
    * @param item Base item to enhance
+   * @param mediaType Type of media ('movie' or 'tv')
    * @returns Basic enhanced media item
    */
-  private static createBasicEnhancedItem(item: NormalizedMovieResult): EnhancedMediaItem {
+  private static createBasicEnhancedItem(
+    item: ExtendedMovieResult, 
+    mediaType: 'movie' | 'tv'
+  ): EnhancedMediaItem {
+    // Extract or determine year from item or title
+    const year = item.year || this.extractYearFromTitle(item.title) || new Date().getFullYear();
+    
     return {
-      id: item.guid || `movie-${Date.now()}`,
-      title: item.title,
-      overview: item.title, // Use title as fallback overview
-      backdropPath: '/api/placeholder/1920/1080', // Placeholder path
-      posterPath: '/api/placeholder/500/750', // Placeholder path
-      mediaType: 'movie', // Default to movie
-      rating: 0,
-      year: item.year || new Date().getFullYear(),
-      genres: [],
+      guid: item.guid || `${mediaType}-${Date.now()}`,
+      indexerId: item.indexer || '', // Map indexer to indexerId 
+      title: item.title, // Keep original title from Prowlarr
+      size: item.size,
+      protocol: 'torrent', // Default to torrent
+      seeders: item.seeders,
+      leechers: item.leechers,
+      quality: item.quality,
+      publishDate: new Date().toISOString(), // Default value
+      infoUrl: item.infoUrl || '',
+      downloadUrl: item.downloadUrl || '',
+      mediaType: mediaType,
+      
+      // TMDb enrichment data (placeholders)
+      tmdbInfo: {
+        tmdbId: 0, // Default ID
+        title: item.title,
+        overview: '',
+        posterPath: undefined, 
+        backdropPath: undefined,
+        voteAverage: 0,
+        year: year,
+        genreIds: [],
+        runtime: 0
+      },
+      
+      // Display fields
+      displayTitle: item.title,
+      displayOverview: '',
+      displayYear: year,
+      displayRating: 0,
+      displayGenres: [],
+      
+      // Full paths for UI
+      fullPosterPath: '/api/placeholder/500/750',
+      fullBackdropPath: '/api/placeholder/1920/1080',
+      
+      // State flags
       inLibrary: false,
-      downloading: false,
-      tmdbAvailable: false
+      isDownloading: false
     };
   }
-  
+
+  /**
+   * Normalize a title for search purposes
+   * @param title Title to normalize
+   * @returns Normalized title
+   */
   /**
    * Clean a title for search purposes
    * @param title Title to clean
    * @returns Cleaned title
    */
-  private static cleanTitleForSearch(title: string): string {
+  private static normalizeTitle(title: string): string {
     // Remove special characters and common words that might affect search
     let cleanTitle = title
-      .replace(/[^\w\s]/g, ' ')  // Replace special chars with spaces
-      .replace(/\s+/g, ' ')      // Replace multiple spaces with single space
+      .toLowerCase()
+      .replace(/\[.*?\]|\(.*?\)|[^\w\s]/g, '') // Remove brackets, parentheses, non-alphanumeric
+      .replace(/\s+/g, ' ')      // Normalize whitespace
       .trim();
-      
+    
     // Remove common words and abbreviations that might affect search
     const wordsToRemove = [
       'dvdrip', 'bdrip', 'brrip', 'bluray', 'webrip', 'web-dl', 'web',
@@ -221,7 +335,7 @@ export class MetadataEnricher {
     ];
     
     wordsToRemove.forEach(word => {
-      const regex = new RegExp(`\\b${word}\\b`, 'gi');
+      const regex = new RegExp(`\b${word}\b`, 'gi');
       cleanTitle = cleanTitle.replace(regex, '');
     });
     
@@ -235,7 +349,7 @@ export class MetadataEnricher {
    * @param originalTitle Original title to match against
    * @returns Best matching result
    */
-  private static findBestMatch(results: any[], originalTitle: string): any {
+  private static findBestMatch(results: TMDbResult[], originalTitle: string): TMDbResult {
     if (results.length === 1) {
       return results[0];
     }
@@ -315,5 +429,18 @@ export class MetadataEnricher {
     
     // Return the distance
     return matrix[len1][len2];
+  }
+  
+  /**
+   * Extract the year from a title string (e.g., "Movie Title 2020")
+   * @param title Title string to extract year from
+   * @returns Extracted year or undefined if not found
+   */
+  private static extractYearFromTitle(title: string): number | undefined {
+    const yearMatch = title.match(/\b(19|20)\d{2}\b/);
+    if (yearMatch && yearMatch[0]) {
+      return parseInt(yearMatch[0]);
+    }
+    return undefined;
   }
 }

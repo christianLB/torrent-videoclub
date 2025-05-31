@@ -27,7 +27,6 @@ export function HackerMediaCard({
   quality,
   seeders,
   size,
-  tmdbId,
   handleAddClick,
 }: HackerMediaCardProps) {
   const [isHovered, setIsHovered] = useState(false);

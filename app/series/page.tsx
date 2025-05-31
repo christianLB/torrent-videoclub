@@ -35,7 +35,7 @@ export default function SeriesPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { showNotification } = useNotification();
-  const [genres, setGenres] = useState<{ id: number; name: string }[]>([
+  const [genres] = useState<{ id: number; name: string }[]>([ // setGenres was unused
     { id: 10759, name: 'Action & Adventure' },
     { id: 16, name: 'Animation' },
     { id: 35, name: 'Comedy' },

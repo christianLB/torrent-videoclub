@@ -9,8 +9,9 @@ interface LibraryStatus {
 }
 
 export function useLibraryStatus(): LibraryStatus {
-  const [radarrTmdbIds, setRadarrTmdbIds] = useState<number[]>([]);
-  const [sonarrTmdbIds, setSonarrTmdbIds] = useState<number[]>([]);
+  // These state variables are not currently used in the component
+  // const [radarrTmdbIds, setRadarrTmdbIds] = useState<number[]>([]);
+  // const [sonarrTmdbIds, setSonarrTmdbIds] = useState<number[]>([]);
   const [libraryTmdbIds, setLibraryTmdbIds] = useState<Set<number>>(new Set());
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +24,7 @@ export function useLibraryStatus(): LibraryStatus {
       // Initialize local error trackers for this fetch operation
       let currentRadarrError: string | null = null;
       let currentSonarrError: string | null = null;
-      let combinedIds = new Set<number>();
+      const combinedIds = new Set<number>();
       let overallFetchFailed = false; // Tracks if any fetch threw a network-level error
 
       try {
@@ -43,8 +44,9 @@ export function useLibraryStatus(): LibraryStatus {
             currentRadarrError = 'Radarr: Invalid response format.';
           }
         }
-      } catch (e: any) {
-        currentRadarrError = `Radarr: ${e.message || 'Network error'}`;
+      } catch (e) {
+        const errorMessage = e instanceof Error ? e.message : 'Network error';
+        currentRadarrError = `Radarr: ${errorMessage}`;
         console.error('Network error fetching Radarr library:', e);
         overallFetchFailed = true;
       }
@@ -66,8 +68,9 @@ export function useLibraryStatus(): LibraryStatus {
             currentSonarrError = 'Sonarr: Invalid response format.';
           }
         }
-      } catch (e: any) {
-        currentSonarrError = `Sonarr: ${e.message || 'Network error'}`;
+      } catch (e) {
+        const errorMessage = e instanceof Error ? e.message : 'Network error';
+        currentSonarrError = `Sonarr: ${errorMessage}`;
         console.error('Network error fetching Sonarr library:', e);
         overallFetchFailed = true;
       }
@@ -78,7 +81,7 @@ export function useLibraryStatus(): LibraryStatus {
       setLibraryTmdbIds(combinedIds);
 
       if (currentRadarrError || currentSonarrError) {
-        let combinedErrorMessage = [];
+        const combinedErrorMessage = [];
         if (currentRadarrError) combinedErrorMessage.push(currentRadarrError);
         if (currentSonarrError) combinedErrorMessage.push(currentSonarrError);
         setError(combinedErrorMessage.join('; '));

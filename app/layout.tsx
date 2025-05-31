@@ -4,7 +4,6 @@ import "./globals.css";
 import "../styles/hacker-theme.css";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationProvider } from "@/components/notification-context";
 import { HackerLayout } from "@/components/hacker-layout";
 import { Toaster } from "react-hot-toast";

@@ -9,7 +9,12 @@ import { tmdbDataService } from './tmdb-data-service'; // Import new TMDB data s
 
 // We'll use dynamic import for node-cron since it's a Node.js module
 // and we want to avoid issues with client-side rendering
-let cron: any;
+// Define a type for the node-cron module
+type NodeCron = {
+  schedule: (expression: string, callback: () => void) => void;
+};
+
+let cron: NodeCron | null = null;
 
 // Flag to track if scheduler is initialized
 let initialized = false;

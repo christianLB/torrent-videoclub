@@ -199,10 +199,10 @@ export class TrendingContentClient {
       
       console.log(`[TrendingContentClient] Raw search returned ${results.length} documentary results`);
       
-      // Determine media type based on categories
-      const isTV = results.some(result => {
-        // Categories from Prowlarr can be either strings or objects with a 'name' property
-        return result.categories.some(cat => {
+      // Determine media type based on categories and set it on each item
+      const featuredItems = results.map(result => {
+        // Check if this item has TV-related categories
+        const isTVItem = result.categories.some(cat => {
           // If category is an object with a name property, use that
           const categoryName = typeof cat === 'object' && cat !== null && 'name' in cat 
             ? String(cat.name) 
@@ -212,10 +212,14 @@ export class TrendingContentClient {
                  categoryName.toLowerCase().includes('series') ||
                  categoryName.toLowerCase().includes('show');
         });
+        
+        // Convert to FeaturedItem and set the mediaType based on category detection
+        const item = this.prowlarrClient.convertToFeaturedItem(result);
+        if (isTVItem) {
+          item.mediaType = 'tv';
+        }
+        return item;
       });
-      
-      // Convert to FeaturedItems
-      const featuredItems = results.map(result => this.prowlarrClient.convertToFeaturedItem(result));
       
       // Filter out adult content if requested
       const filteredItems = options.excludeAdult 

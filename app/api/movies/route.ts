@@ -39,17 +39,17 @@ export async function GET(request: Request) {
       // Find matching TMDb movie (if TMDb data is available)
       const matchingTMDbMovie = tmdbMovies.find(tmdbMovie => 
         tmdbMovie.title.toLowerCase() === prowlarrMovie.title.toLowerCase() &&
-        (!prowlarrMovie.year || !tmdbMovie.year || prowlarrMovie.year === tmdbMovie.year)
+        (!prowlarrMovie.year || !tmdbMovie.releaseDate || (prowlarrMovie.year && tmdbMovie.releaseDate && prowlarrMovie.year.toString() === tmdbMovie.releaseDate.substring(0,4)))
       );
       
       return {
         ...prowlarrMovie,
         tmdb: matchingTMDbMovie ? {
-          id: matchingTMDbMovie.id,
+          id: matchingTMDbMovie.tmdbId,
           posterPath: matchingTMDbMovie.posterPath,
           backdropPath: matchingTMDbMovie.backdropPath,
           voteAverage: matchingTMDbMovie.voteAverage,
-          genreIds: matchingTMDbMovie.genreIds,
+          genreIds: matchingTMDbMovie.genres?.map(g => g.id),
           overview: matchingTMDbMovie.overview,
         } : undefined,
         tmdbAvailable: hasTmdbData, // Flag to indicate if TMDb integration is available
@@ -57,10 +57,16 @@ export async function GET(request: Request) {
     });
     
     return NextResponse.json(enrichedMovies);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in /api/movies route:', error);
+    let errorMessage = 'An error occurred while fetching movies';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+    }
     return NextResponse.json(
-      { error: error.message || 'An error occurred while fetching movies' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

@@ -104,19 +104,27 @@ export async function POST(request: Request) {
       message: `'${seriesDetails.title}' added to Sonarr successfully`,
       series: sonarrSeries,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in /api/add/tv route:', error);
     let errorMessage = 'An error occurred while adding the TV series';
-    if (error.message) {
-        errorMessage = error.message;
-    }
-    // Avoid exposing too much detail in production for some errors
-    if (error.message && (error.message.includes('ECONNREFUSED') || error.message.includes('Sonarr'))) {
+
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      // Check for connection refused or Sonarr specific errors
+      if (error.message.includes('ECONNREFUSED') || error.message.toLowerCase().includes('sonarr')) {
         errorMessage = 'Could not connect to Sonarr. Please check configuration and ensure Sonarr is running.';
+      } else if (error.message.includes('No quality profiles found')) {
+        errorMessage = 'Could not add series: Sonarr quality profiles are not configured or accessible.';
+      } else if (error.message.includes('No root folders found')) {
+        errorMessage = 'Could not add series: Sonarr root folders are not configured or accessible.';
+      }
+      // Add any other specific error message checks for Sonarr here
+    } else if (typeof error === 'string') {
+      errorMessage = error;
     }
 
     return NextResponse.json(
-      { error: errorMessage },
+      { success: false, message: errorMessage },
       { status: 500 }
     );
   }

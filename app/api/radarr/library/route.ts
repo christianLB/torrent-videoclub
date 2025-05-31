@@ -21,20 +21,18 @@ export async function GET() {
 
     return NextResponse.json({ tmdbIds });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API/radarr/library] Error fetching Radarr library TMDB IDs:', error);
     let errorMessage = 'Failed to fetch Radarr library status.';
-    if (error.message) {
+    if (error instanceof Error) {
       errorMessage = error.message;
+      // Check for connection refused or Radarr specific errors
+      if ('code' in error && error.code === 'ECONNREFUSED') {
+        errorMessage = 'Radarr instance is not reachable. Please check if Radarr is running and accessible.';
+      }
+    } else if (typeof error === 'string') {
+      errorMessage = error;
     }
-    // Check for connection refused or Radarr specific errors
-    if (error.message && (error.message.includes('ECONNREFUSED') || error.message.toLowerCase().includes('radarr'))) {
-      errorMessage = 'Could not connect to Radarr. Please check configuration and ensure Radarr is running.';
-    }
-
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

@@ -9,7 +9,7 @@ export interface CacheRefreshResponse {
   success: boolean;
   message?: string;
   error?: string;
-  data?: any;
+  data?: unknown;
 }
 
 export interface CacheStatusResponse {

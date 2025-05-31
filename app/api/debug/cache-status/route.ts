@@ -4,11 +4,11 @@
  * This endpoint allows developers to check if real data is being used
  * and what's currently in the Redis cache.
  */
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { redisService } from '@/lib/services/server/redis-service';
 import { CuratorService } from '@/lib/services/curator-service';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Get all Redis keys related to our application
     const allKeys = await redisService.getKeys('featured:*');
@@ -30,12 +30,12 @@ export async function GET(request: NextRequest) {
     
     // Check if a sample of data exists
     const featuredContent = await redisService.get<{
-      featuredCarouselItems?: any[];
-      categories?: any[];
+      featuredCarouselItems?: unknown[];
+      categories?: unknown[];
     }>('featured:content');
     
     const sampleCategory = await redisService.get<{
-      items?: any[];
+      items?: unknown[];
     }>('featured:category:trending-movies');
     
     return NextResponse.json({

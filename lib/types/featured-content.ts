@@ -3,7 +3,7 @@
  */
 
 import { NormalizedMovieResult } from "../api/prowlarr-client";
-import { TMDbSearchResult } from "../api/tmdb-client";
+import { TMDBMediaItem } from "../types/tmdb";
 
 /**
  * Extends the NormalizedMovieResult with library status information
@@ -16,7 +16,7 @@ export interface EnhancedMediaItem extends NormalizedMovieResult {
   
   // TMDb integration
   tmdbAvailable: boolean;
-  tmdb?: TMDbSearchResult;
+  tmdb?: TMDBMediaItem;
 }
 
 /**

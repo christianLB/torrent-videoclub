@@ -4,13 +4,15 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import FeaturedPage from '../FeaturedPage'; // Adjust path as necessary
 import { FeaturedContent, FeaturedItem } from '@/lib/types/featured';
+import { toast } from 'react-hot-toast';
 import { vi, Mock } from 'vitest'; // Import vi and Mock
 
 // Mock next/image
+import { ImageProps } from 'next/image';
 vi.mock('next/image', () => ({
   __esModule: true,
-  default: (props: any) => {
-    // eslint-disable-next-line @next/next/no-img-element
+  default: (props: ImageProps) => {
+
     const { src, alt, width, height, style, ...rest } = props;
     // Attempt to provide some basic styling if dimensions are available
     const imgStyle = {
@@ -18,7 +20,7 @@ vi.mock('next/image', () => ({
       height: height ? `${height}px` : 'auto',
       ...style,
     };
-    // eslint-disable-next-line jsx-a11y/alt-text
+
     return <img src={src as string} alt={alt as string} style={imgStyle} {...rest} />;
   },
 }));
@@ -123,7 +125,7 @@ describe('FeaturedPage', () => {
     });
 
     await waitFor(() => {
-        expect(require('react-hot-toast').toast.success).toHaveBeenCalledWith('Successfully added');
+        expect(toast.success).toHaveBeenCalledWith('Successfully added');
     });
   });
 

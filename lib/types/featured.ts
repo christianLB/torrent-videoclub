@@ -5,9 +5,7 @@
  * which replaces the old featured-content.ts definitions.
  */
 
-// Import legacy types for compatibility
-import { NormalizedMovieResult } from "../api/prowlarr-client";
-import { TMDbSearchResult } from "../api/tmdb-client";
+// Types are now defined locally in this file
 
 export interface TMDbEnrichmentData {
   tmdbId?: number;        // TMDb ID for the movie or TV show

@@ -56,35 +56,27 @@ export async function POST(request: Request) {
       message: 'Movie added to Radarr successfully',
       movie: radarrMovie,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in /api/add/movie route:', error);
     let errorMessage = 'An error occurred while adding the movie';
-    let errorDetails = undefined;
 
-    if (error.message) {
+    if (error instanceof Error) {
       errorMessage = error.message;
-    }
-
-    // Check for connection refused or Radarr specific errors
-    if (error.message && (error.message.includes('ECONNREFUSED') || error.message.toLowerCase().includes('radarr'))) {
-      errorMessage = 'Could not connect to Radarr. Please check configuration and ensure Radarr is running.';
-      // Optionally, you can include more details if error.cause exists and is an Error object
-      if (error.cause && typeof error.cause === 'object' && 'message' in error.cause) {
-        // For ECONNREFUSED, error.cause might have address and port
-        if ('address' in error.cause && 'port' in error.cause) {
-            errorDetails = `Connection refused at ${error.cause.address}:${error.cause.port}`;
-        } else {
-            errorDetails = String(error.cause.message);
-        }
-      } 
-    } else if (error.message && error.message.includes('No quality profiles found')) {
+      // Check for connection refused or Radarr specific errors
+      if (error.message.includes('ECONNREFUSED') || error.message.toLowerCase().includes('radarr')) {
+        errorMessage = 'Could not connect to Radarr. Please check configuration and ensure Radarr is running.';
+      } else if (error.message.includes('No quality profiles found')) {
         errorMessage = 'Could not add movie: Radarr quality profiles are not configured or accessible.';
-    } else if (error.message && error.message.includes('No root folders found')) {
+      } else if (error.message.includes('No root folders found')) {
         errorMessage = 'Could not add movie: Radarr root folders are not configured or accessible.';
-    }
+      }
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+    } 
+    // If it's not an Error instance or a string, we stick with the generic message or log more details.
 
     return NextResponse.json(
-      { error: errorMessage, ...(errorDetails && { details: errorDetails }) },
+      { success: false, message: errorMessage }, // Changed 'error' key to 'message' for consistency with success response, removed errorDetails
       { status: 500 }
     );
   }

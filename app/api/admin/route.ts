@@ -14,10 +14,14 @@ export async function GET() {
     }
 
     return NextResponse.json(featuredContent);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API /api/admin/cache/featured] Error fetching cached content:', error);
+    let message = 'An error occurred while fetching cached content.';
+    if (error instanceof Error) {
+      message = error.message;
+    }
     return NextResponse.json(
-      { error: error.message || 'An error occurred while fetching cached content.' },
+      { error: message }, 
       { status: 500 }
     );
   }

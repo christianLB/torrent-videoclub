@@ -158,7 +158,7 @@ const FeaturedPage: React.FC = () => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <h3 className="text-lg font-medium text-white mb-2">No Featured Content Available</h3>
-          <p className="text-gray-400 max-w-md">It seems there's nothing to show right now. Please check back later or try a search.</p>
+          <p className="text-gray-400 max-w-md">It seems there&apos;s nothing to show right now. Please check back later or try a search.</p>
         </div>
       )}
 

@@ -34,7 +34,7 @@ export async function GET() {
     const sonarrUrl = process.env.SONARR_URL;
     const sonarrApiKey = process.env.SONARR_API_KEY;
 
-    let libraryTmdbIds = new Set<number>();
+    const libraryTmdbIds = new Set<number>();
 
     // Fetch Radarr library TMDB IDs
     if (radarrUrl && radarrApiKey) {
@@ -104,10 +104,14 @@ export async function GET() {
 
     return NextResponse.json(carouselItems);
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API/featured/carousel-content] Error fetching carousel content:', error);
+    let details = 'Unknown error';
+    if (error instanceof Error) {
+      details = error.message;
+    }
     return NextResponse.json(
-      { error: 'Failed to fetch carousel content.', details: error.message },
+      { error: 'Failed to fetch carousel content.', details }, 
       { status: 500 }
     );
   }

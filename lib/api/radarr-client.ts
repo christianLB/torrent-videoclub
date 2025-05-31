@@ -23,7 +23,7 @@ export interface RadarrMovieResponse {
   title: string;
   tmdbId: number;
   year: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface RadarrRootFolder {
@@ -31,7 +31,7 @@ export interface RadarrRootFolder {
   path: string;
   accessible: boolean;
   freeSpace: number;
-  unmappedFolders: any[];
+  unmappedFolders: unknown[];
 }
 
 export interface RadarrQualityProfile {
@@ -39,7 +39,7 @@ export interface RadarrQualityProfile {
   name: string;
   upgradeAllowed: boolean;
   cutoff: number;
-  items: any[];
+  items: unknown[];
 }
 
 export class RadarrClient {
@@ -221,7 +221,7 @@ export class RadarrClient {
         let errorText = '';
         try {
           errorText = await response.text();
-        } catch (e) {
+        } catch {
           // Ignore if can't read text
         }
         throw new Error(

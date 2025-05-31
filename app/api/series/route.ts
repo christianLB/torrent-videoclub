@@ -39,17 +39,17 @@ export async function GET(request: Request) {
       // Find matching TMDb series (if TMDb data is available)
       const matchingTMDbSeries = tmdbSeries.find(tmdbSeries => 
         tmdbSeries.title.toLowerCase() === prowlarrSeries.title.toLowerCase() &&
-        (!prowlarrSeries.year || !tmdbSeries.year || prowlarrSeries.year === tmdbSeries.year)
+        (!prowlarrSeries.year || !tmdbSeries.firstAirDate || (prowlarrSeries.year && tmdbSeries.firstAirDate && prowlarrSeries.year.toString() === tmdbSeries.firstAirDate.substring(0,4)))
       );
       
       return {
         ...prowlarrSeries,
         tmdb: matchingTMDbSeries ? {
-          id: matchingTMDbSeries.id,
+          id: matchingTMDbSeries.tmdbId,
           posterPath: matchingTMDbSeries.posterPath,
           backdropPath: matchingTMDbSeries.backdropPath,
           voteAverage: matchingTMDbSeries.voteAverage,
-          genreIds: matchingTMDbSeries.genreIds,
+          genreIds: matchingTMDbSeries.genres?.map(g => g.id),
           overview: matchingTMDbSeries.overview,
         } : undefined,
         tmdbAvailable: hasTmdbData, // Flag to indicate if TMDb integration is available
@@ -57,10 +57,16 @@ export async function GET(request: Request) {
     });
     
     return NextResponse.json(enrichedSeries);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in /api/series route:', error);
+    let errorMessage = 'An error occurred while fetching series';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+    }
     return NextResponse.json(
-      { error: error.message || 'An error occurred while fetching series' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

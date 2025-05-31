@@ -1,9 +1,9 @@
 import { POST } from '../route'; // Adjust path as necessary
-import { NextResponse } from 'next/server';
-import { SonarrClient } from '../../../../../lib/api/sonarr-client';
+// Assuming these types are exported from sonarr-client or defined elsewhere and available
+import { SonarrClient, SonarrQualityProfile, SonarrSeriesData, SonarrSeriesResponse } from '../../../../../lib/api/sonarr-client';
 import { TMDbClient } from '../../../../../lib/api/tmdb-client';
 import { TMDBMediaItem } from '../../../../../lib/types/tmdb';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, MockedClass, Mock } from 'vitest';
 
 // Mock the external clients
 vi.mock('../../../../../lib/api/sonarr-client');
@@ -20,8 +20,13 @@ const mockProcessEnv = {
 const originalProcessEnv = { ...process.env };
 
 describe('/api/add/tv POST endpoint', () => {
-  let mockTmdbClientInstance: any;
-  let mockSonarrClientInstance: any;
+  let mockTmdbClientInstance: {
+    getTvShowDetails: Mock<(tmdbId: number) => Promise<TMDBMediaItem | null>>;
+  };
+  let mockSonarrClientInstance: {
+    addSeries: Mock<(seriesData: SonarrSeriesData) => Promise<SonarrSeriesResponse>>;
+    getQualityProfiles: Mock<() => Promise<SonarrQualityProfile[]>>;
+  };
 
   beforeEach(() => {
     // Restore original process.env and then set mocks for each test
@@ -34,14 +39,14 @@ describe('/api/add/tv POST endpoint', () => {
     mockTmdbClientInstance = {
       getTvShowDetails: vi.fn(),
     };
-    (TMDbClient as any).mockImplementation(() => mockTmdbClientInstance);
+    (TMDbClient as MockedClass<typeof TMDbClient>).mockImplementation(() => mockTmdbClientInstance as unknown as TMDbClient);
 
     // Mock SonarrClient methods
     mockSonarrClientInstance = {
       addSeries: vi.fn(),
       getQualityProfiles: vi.fn(), // Add mock for getQualityProfiles
     };
-    (SonarrClient as any).mockImplementation(() => mockSonarrClientInstance);
+    (SonarrClient as MockedClass<typeof SonarrClient>).mockImplementation(() => mockSonarrClientInstance as unknown as SonarrClient);
 
     // Default mock for getQualityProfiles - can be overridden in specific tests
     mockSonarrClientInstance.getQualityProfiles.mockResolvedValue([
@@ -69,7 +74,7 @@ describe('/api/add/tv POST endpoint', () => {
     } as TMDBMediaItem; // Cast to satisfy type, add more fields as needed by SonarrClient
 
     mockTmdbClientInstance.getTvShowDetails.mockResolvedValue(mockTvShowDetails);
-    mockSonarrClientInstance.addSeries.mockResolvedValue({ id: 1, title: 'Test Show' });
+    mockSonarrClientInstance.addSeries.mockResolvedValue({ id: 1, title: 'Test Show', tvdbId: mockTvShowDetails.tvdb_id!, year: parseInt(mockTvShowDetails.firstAirDate!.substring(0,4)) });
 
     const request = new Request('http://localhost/api/add/tv', {
       method: 'POST',
@@ -224,7 +229,7 @@ describe('/api/add/tv POST endpoint', () => {
       { id: 10, name: 'Specific1' },
       { id: 11, name: 'Specific2' },
     ]);
-    mockSonarrClientInstance.addSeries.mockResolvedValue({ id: 1, title: 'Test Show' });
+    mockSonarrClientInstance.addSeries.mockResolvedValue({ id: 1, title: 'Test Show', tvdbId: 1011, year: 2023 });
 
     const request = new Request('http://localhost/api/add/tv', {
       method: 'POST',
@@ -240,7 +245,7 @@ describe('/api/add/tv POST endpoint', () => {
     const mockTvShowDetails: TMDBMediaItem = { tmdbId: mockTmdbId, mediaType: 'tv', title: 'Show With Empty Profiles', tvdb_id: 1213 } as TMDBMediaItem;
     mockTmdbClientInstance.getTvShowDetails.mockResolvedValue(mockTvShowDetails);
     mockSonarrClientInstance.getQualityProfiles.mockResolvedValue([]);
-    mockSonarrClientInstance.addSeries.mockResolvedValue({ id: 1, title: 'Test Show' });
+    mockSonarrClientInstance.addSeries.mockResolvedValue({ id: 1, title: 'Test Show', tvdbId: 1213, year: 2023 });
 
     const request = new Request('http://localhost/api/add/tv', {
       method: 'POST',
@@ -256,7 +261,7 @@ describe('/api/add/tv POST endpoint', () => {
     const mockTvShowDetails: TMDBMediaItem = { tmdbId: mockTmdbId, mediaType: 'tv', title: 'Show With Profile Fetch Error', tvdb_id: 1415 } as TMDBMediaItem;
     mockTmdbClientInstance.getTvShowDetails.mockResolvedValue(mockTvShowDetails);
     mockSonarrClientInstance.getQualityProfiles.mockRejectedValue(new Error('API down'));
-    mockSonarrClientInstance.addSeries.mockResolvedValue({ id: 1, title: 'Test Show' });
+    mockSonarrClientInstance.addSeries.mockResolvedValue({ id: 1, title: 'Test Show', tvdbId: 1415, year: 2023 });
 
     const request = new Request('http://localhost/api/add/tv', {
       method: 'POST',

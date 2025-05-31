@@ -101,8 +101,8 @@ export class ProwlarrClient {
         try {
           const errorText = await response.text();
           console.error(`[ProwlarrClient] Error response: ${errorText}`);
-        } catch (e) {
-          console.error('[ProwlarrClient] Could not read error response');
+        } catch (e: unknown) {
+          console.error(`[ProwlarrClient] Could not read error response: ${e instanceof Error ? e.message : String(e)}`);
         }
         return [];
       }
@@ -157,31 +157,31 @@ export class ProwlarrClient {
              categoryStr.toLowerCase().includes('show');
     });
     
-    // Generate a unique ID
-    const id = `prowlarr-${result.guid.replace(/[^a-zA-Z0-9]/g, '')}`;
+    // Generate a unique ID for internal use
+    const cleanId = `prowlarr-${result.guid.replace(/[^a-zA-Z0-9]/g, '')}`;
     
-    // Create a basic featured item
+    // Create a basic featured item that matches the FeaturedItem interface
     return {
-      id,
       guid: result.guid,
+      indexerId: cleanId, // Use the clean ID for indexerId
       title: this.cleanTitle(result.title),
-      overview: result.title, // Use full title as overview initially
-      backdropPath: '/api/placeholder/1920/1080', // Placeholder until enriched
-      posterPath: '/api/placeholder/500/750', // Placeholder until enriched
-      mediaType: isTV ? 'tv' : 'movie',
-      rating: 0, // Will be enriched later
-      year,
-      genres: [], // Will be enriched later
-      quality,
       size: result.size,
       seeders: result.seeders,
       leechers: result.leechers,
+      protocol: (result.protocol === 'torrent' || result.protocol === 'usenet') ? result.protocol : 'torrent',
       publishDate: result.publishDate,
+      quality: quality || '720p',
       downloadUrl: result.downloadUrl,
       infoUrl: result.infoUrl,
+      // Additional FeaturedItem fields
+      mediaType: isTV ? 'tv' : 'movie',
       inLibrary: false, // Will be checked later
-      downloading: false, // Will be checked later
-      tmdbAvailable: false // Will be enriched later
+      isDownloading: false, // Will be checked later
+      // Display fields
+      displayTitle: this.cleanTitle(result.title),
+      displayYear: year,
+      // These will be populated during TMDb enrichment
+      tmdbInfo: undefined
     };
   }
   

@@ -3,10 +3,12 @@ import { TMDbClient } from '@/lib/api/tmdb-client';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+  { params }: { params: Promise<{ id: string }> }
+): Promise<NextResponse> {
   try {
-    const id = parseInt(params.id);
+    // In Next.js 15, params is a Promise that must be awaited
+    const { id: idStr } = await params;
+    const id = parseInt(idStr);
     
     if (isNaN(id)) {
       return NextResponse.json(

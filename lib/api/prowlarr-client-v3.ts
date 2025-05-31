@@ -365,7 +365,6 @@ export class ProwlarrClientV3 {
   } {
     // Basic pattern to extract information
     // Example: "Movie.Title.2023.1080p.BluRay.x264"
-    const titleParts = releaseTitle.split('.');
     
     // Extract year (4 digits that could be a year)
     const yearMatch = releaseTitle.match(/\b(19\d{2}|20\d{2})\b/);

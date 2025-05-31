@@ -62,8 +62,14 @@ export default function AdminCachePage() {
       }
       const data: FeaturedContent = await response.json();
       setCachedData(data);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else if (typeof err === 'string') {
+        setError(err);
+      } else {
+        setError('An unknown error occurred');
+      }
       setCachedData(null);
     }
     setIsLoading(false);
@@ -107,10 +113,16 @@ export default function AdminCachePage() {
                     },
                     body: JSON.stringify({ type, categoryId }),
                   });
-                  const data = await response.json();
+                  const data: { message?: string } = await response.json();
                   alert(data.message || 'Operation completed: ' + (response.ok ? 'Success' : 'Failed'));
-                } catch (err: any) {
-                  alert('Error submitting refresh request: ' + err.message);
+                } catch (err: unknown) {
+                  let errorMessage = 'An unknown error occurred';
+                  if (err instanceof Error) {
+                    errorMessage = err.message;
+                  } else if (typeof err === 'string') {
+                    errorMessage = err;
+                  }
+                  alert('Error submitting refresh request: ' + errorMessage);
                 }
               }}
             >

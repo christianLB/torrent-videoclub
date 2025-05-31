@@ -12,7 +12,7 @@ export const CACHE_EXPIRATION = {
 };
 
 // Memory cache for server-side environments
-let memoryCache: Record<string, any> = {};
+const memoryCache: Record<string, unknown> = {};
 
 /**
  * Check if running in browser environment
@@ -70,7 +70,16 @@ export class CacheService {
         }
       } else {
         // Server environment - use memory cache
-        cacheItem = memoryCache[CACHE_KEYS.FEATURED_CONTENT] || null;
+        const memoryCacheItem = memoryCache[CACHE_KEYS.FEATURED_CONTENT];
+        // Ensure the memory cache item has the correct structure
+        if (memoryCacheItem && 
+            typeof memoryCacheItem === 'object' && 
+            'data' in memoryCacheItem && 
+            'timestamp' in memoryCacheItem) {
+          cacheItem = memoryCacheItem as { data: FeaturedContent, timestamp: number };
+        } else {
+          cacheItem = null;
+        }
       }
       
       if (!cacheItem) {
@@ -127,7 +136,16 @@ export class CacheService {
         }
       } else {
         // Server environment - use memory cache
-        cacheItem = memoryCache[CACHE_KEYS.FEATURED_CONTENT] || null;
+        const memoryCacheItem = memoryCache[CACHE_KEYS.FEATURED_CONTENT];
+        // Ensure the memory cache item has the correct structure
+        if (memoryCacheItem && 
+            typeof memoryCacheItem === 'object' && 
+            'data' in memoryCacheItem && 
+            'timestamp' in memoryCacheItem) {
+          cacheItem = memoryCacheItem as { data: FeaturedContent, timestamp: number };
+        } else {
+          cacheItem = null;
+        }
       }
       
       if (!cacheItem) {
@@ -160,7 +178,16 @@ export class CacheService {
         }
       } else {
         // Server environment - use memory cache
-        cacheItem = memoryCache[CACHE_KEYS.FEATURED_CONTENT] || null;
+        const memoryCacheItem = memoryCache[CACHE_KEYS.FEATURED_CONTENT];
+        // Ensure the memory cache item has the correct structure
+        if (memoryCacheItem && 
+            typeof memoryCacheItem === 'object' && 
+            'data' in memoryCacheItem && 
+            'timestamp' in memoryCacheItem) {
+          cacheItem = memoryCacheItem as { data: FeaturedContent, timestamp: number };
+        } else {
+          cacheItem = null;
+        }
       }
       
       if (!cacheItem) {

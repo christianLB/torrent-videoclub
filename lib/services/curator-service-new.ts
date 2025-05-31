@@ -6,12 +6,14 @@
  * 
  * It uses a caching strategy to minimize API calls and ensure fast response times.
  */
-import { getMockFeaturedContent, CONTENT_CATEGORIES } from '../data/mock-featured';
-import { FeaturedContent, FeaturedCategory, FeaturedItem, EnhancedMediaItem } from '../types/featured';
-import { CacheService } from './cache-service';
-import { redisService } from './server/redis-service';
+// These imports will be needed when implementing the rest of the service
+// import { getMockFeaturedContent, CONTENT_CATEGORIES } from '../data/mock-featured';
+// import { FeaturedContent, FeaturedCategory, FeaturedItem, EnhancedMediaItem } from '../types/featured';
+// import { CacheService } from './cache-service';
+// import { redisService } from './server/redis-service';
 import { TrendingContentClient } from './trending-content-client';
 import { MetadataEnricher } from './metadata-enricher';
+import { TMDbClient } from '../api/tmdb-client';
 import { ensureEnvLoaded } from '../utils/env';
 
 /**
@@ -21,7 +23,7 @@ export class CuratorService {
   // API client instances
   private static prowlarrClient: TrendingContentClient | null = null;
   private static trendingClient: TrendingContentClient | null = null;
-  private static tmdbClient: any | null = null;
+  private static tmdbClient: MetadataEnricher | null = null;
   
   // Configuration options
   private static useRealData = false; // Will be set to true if environment variables are properly loaded
@@ -92,7 +94,10 @@ export class CuratorService {
     
     // Initialize TMDb client if API key is provided
     if (tmdbApiKey) {
-      this.tmdbClient = new MetadataEnricher(tmdbApiKey);
+      // Create TMDb client and initialize the MetadataEnricher
+      const tmdbClient = new TMDbClient(tmdbApiKey);
+      MetadataEnricher.initialize(tmdbClient);
+      this.tmdbClient = MetadataEnricher;
       console.log('[CuratorService] TMDb client initialized');
     } else {
       console.warn('[CuratorService] Missing TMDb API key');

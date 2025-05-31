@@ -40,7 +40,7 @@ export function MediaCard({
     }
   };
   
-  const handleAddToLibrary = async (id: number) => {
+  const handleAddToLibrary = async () => {
     handleAddClick(guid);
     return Promise.resolve();
   };

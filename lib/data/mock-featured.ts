@@ -1,7 +1,7 @@
 /**
  * Mock featured content data
  */
-import { FeaturedContent, FeaturedCategory, FeaturedItem } from '../types/featured';
+import { FeaturedContent, FeaturedItem, TMDbEnrichmentData } from '../types/featured';
 
 // Content category IDs
 export const CONTENT_CATEGORIES = {
@@ -15,19 +15,32 @@ export const CONTENT_CATEGORIES = {
 export function getMockFeaturedContent(): FeaturedContent {
   return {
     featuredItem: {
-      id: '1',
+      guid: 'featured-dune-part-two',
       title: 'Dune: Part Two',
-      overview: 'Paul Atreides unites with Chani and the Fremen while seeking revenge against the conspirators who destroyed his family.',
-      backdropPath: '/api/placeholder/1920/1080',
-      posterPath: '/api/placeholder/500/750',
+      indexerId: '1',
+      size: 15000000000,
+      seeders: 150,
+      leechers: 15,
+      protocol: 'torrent',
+      publishDate: '2024-03-01',
+      quality: '4K',
       mediaType: 'movie',
-      rating: 8.5,
-      year: 2024,
-      genres: ['Science Fiction', 'Adventure'],
-      runtime: 166,
       inLibrary: false,
-      downloading: false,
-      tmdbAvailable: true
+      isDownloading: false,
+      tmdbInfo: {
+        tmdbId: 693134,
+        title: 'Dune: Part Two',
+        overview: 'Paul Atreides unites with Chani and the Fremen while seeking revenge against the conspirators who destroyed his family.',
+        backdropPath: '/api/placeholder/1920/1080',
+        posterPath: '/api/placeholder/500/750',
+        voteAverage: 8.5,
+        year: 2024,
+        releaseDate: '2024-03-01',
+        runtime: 166
+      },
+      displayTitle: 'Dune: Part Two (2024)',
+      fullPosterPath: 'https://image.tmdb.org/t/p/w500/api/placeholder/500/750',
+      fullBackdropPath: 'https://image.tmdb.org/t/p/original/api/placeholder/1920/1080'
     },
     categories: [
       {
@@ -73,21 +86,42 @@ function generateMockMovies(count: number, type: string): FeaturedItem[] {
     { title: 'Guardians of the Galaxy Vol. 3', year: 2023, rating: 7.9 }
   ];
 
-  return mockMovies.slice(0, count).map((movie, index) => ({
-    id: `${type}-movie-${index + 1}`,
-    title: movie.title,
-    overview: `An exciting ${type} movie that captivates audiences worldwide.`,
-    backdropPath: '/api/placeholder/1920/1080',
-    posterPath: '/api/placeholder/500/750',
-    mediaType: 'movie' as const,
-    rating: movie.rating,
-    year: movie.year,
-    genres: ['Action', 'Adventure'],
-    runtime: 120 + Math.floor(Math.random() * 60),
-    inLibrary: Math.random() > 0.7,
-    downloading: Math.random() > 0.9,
-    tmdbAvailable: true
-  }));
+  return mockMovies.slice(0, count).map((movie, index) => {
+    const tmdbId = 100000 + index;
+    const tmdbInfo: TMDbEnrichmentData = {
+      tmdbId: tmdbId,
+      title: movie.title,
+      overview: `An exciting ${type} movie that captivates audiences worldwide.`,
+      backdropPath: '/api/placeholder/1920/1080',
+      posterPath: '/api/placeholder/500/750',
+      voteAverage: movie.rating,
+      year: movie.year,
+      releaseDate: `${movie.year}-01-01`,
+      runtime: 120 + Math.floor(Math.random() * 60),
+      genreIds: [28, 12] // Action, Adventure
+    };
+    
+    return {
+      guid: `${type}-movie-${index + 1}`,
+      title: `${movie.title} (${movie.year}) ${type}`,
+      indexerId: String(index + 1),
+
+      size: 5000000000 + Math.floor(Math.random() * 10000000000),
+      sizeFormatted: '5.0 GB',
+      quality: Math.random() > 0.3 ? '1080p' : '4K',
+      protocol: 'torrent',
+      publishDate: `${movie.year}-01-01`,
+      seeders: 10 + Math.floor(Math.random() * 100),
+      leechers: 1 + Math.floor(Math.random() * 20),
+      mediaType: 'movie',
+      inLibrary: Math.random() > 0.7,
+      isDownloading: Math.random() > 0.9,
+      tmdbInfo: tmdbInfo,
+      displayTitle: `${movie.title} (${movie.year})`,
+      fullPosterPath: `https://image.tmdb.org/t/p/w500/api/placeholder/500/750`,
+      fullBackdropPath: `https://image.tmdb.org/t/p/original/api/placeholder/1920/1080`
+    };
+  });
 }
 
 function generateMockTVShows(count: number, type: string): FeaturedItem[] {
@@ -104,21 +138,42 @@ function generateMockTVShows(count: number, type: string): FeaturedItem[] {
     { title: 'The Crown', year: 2016, rating: 8.6 }
   ];
 
-  return mockShows.slice(0, count).map((show, index) => ({
-    id: `${type}-tv-${index + 1}`,
-    title: show.title,
-    overview: `A compelling ${type} TV series that keeps viewers on the edge of their seats.`,
-    backdropPath: '/api/placeholder/1920/1080',
-    posterPath: '/api/placeholder/500/750',
-    mediaType: 'tv' as const,
-    rating: show.rating,
-    year: show.year,
-    genres: ['Drama', 'Thriller'],
-    seasons: Math.floor(Math.random() * 5) + 1,
-    inLibrary: Math.random() > 0.7,
-    downloading: Math.random() > 0.9,
-    tmdbAvailable: true
-  }));
+  return mockShows.slice(0, count).map((show, index) => {
+    const tmdbId = 200000 + index;
+    const tmdbInfo: TMDbEnrichmentData = {
+      tmdbId: tmdbId,
+      title: show.title,
+      overview: `A compelling ${type} TV series that keeps viewers on the edge of their seats.`,
+      backdropPath: '/api/placeholder/1920/1080',
+      posterPath: '/api/placeholder/500/750',
+      voteAverage: show.rating,
+      year: show.year,
+      releaseDate: `${show.year}-01-01`,
+      seasons: Math.floor(Math.random() * 5) + 1,
+      genreIds: [18, 53] // Drama, Thriller
+    };
+    
+    return {
+      guid: `${type}-tv-${index + 1}`,
+      title: `${show.title} S01 (${show.year}) ${type}`,
+      indexerId: String(index + 1),
+
+      size: 2000000000 + Math.floor(Math.random() * 5000000000),
+      sizeFormatted: '2.5 GB',
+      quality: Math.random() > 0.3 ? '1080p' : '4K',
+      protocol: 'torrent',
+      publishDate: `${show.year}-01-01`,
+      seeders: 10 + Math.floor(Math.random() * 100),
+      leechers: 1 + Math.floor(Math.random() * 20),
+      mediaType: 'tv',
+      inLibrary: Math.random() > 0.7,
+      isDownloading: Math.random() > 0.9,
+      tmdbInfo: tmdbInfo,
+      displayTitle: `${show.title} (${show.year})`,
+      fullPosterPath: `https://image.tmdb.org/t/p/w500/api/placeholder/500/750`,
+      fullBackdropPath: `https://image.tmdb.org/t/p/original/api/placeholder/1920/1080`
+    };
+  });
 }
 
 function generateMockDocumentaries(count: number): FeaturedItem[] {
@@ -135,19 +190,40 @@ function generateMockDocumentaries(count: number): FeaturedItem[] {
     { title: 'March of the Penguins', year: 2005, rating: 7.5 }
   ];
 
-  return mockDocs.slice(0, count).map((doc, index) => ({
-    id: `documentary-${index + 1}`,
-    title: doc.title,
-    overview: 'An eye-opening documentary that explores important topics and changes perspectives.',
-    backdropPath: '/api/placeholder/1920/1080',
-    posterPath: '/api/placeholder/500/750',
-    mediaType: 'movie' as const,
-    rating: doc.rating,
-    year: doc.year,
-    genres: ['Documentary'],
-    runtime: 90 + Math.floor(Math.random() * 30),
-    inLibrary: Math.random() > 0.8,
-    downloading: Math.random() > 0.95,
-    tmdbAvailable: true
-  }));
+  return mockDocs.slice(0, count).map((doc, index) => {
+    const tmdbId = 300000 + index;
+    const tmdbInfo: TMDbEnrichmentData = {
+      tmdbId: tmdbId,
+      title: doc.title,
+      overview: 'An eye-opening documentary that explores important topics and changes perspectives.',
+      backdropPath: '/api/placeholder/1920/1080',
+      posterPath: '/api/placeholder/500/750',
+      voteAverage: doc.rating,
+      year: doc.year,
+      releaseDate: `${doc.year}-01-01`,
+      runtime: 90 + Math.floor(Math.random() * 30),
+      genreIds: [99] // Documentary
+    };
+    
+    return {
+      guid: `documentary-${index + 1}`,
+      title: `${doc.title} (${doc.year})`,
+      indexerId: String(index + 1),
+
+      size: 3000000000 + Math.floor(Math.random() * 5000000000),
+      sizeFormatted: '3.5 GB',
+      quality: Math.random() > 0.3 ? '1080p' : '4K',
+      protocol: 'torrent',
+      publishDate: `${doc.year}-01-01`,
+      seeders: 5 + Math.floor(Math.random() * 50),
+      leechers: 1 + Math.floor(Math.random() * 10),
+      mediaType: 'movie',
+      inLibrary: Math.random() > 0.8,
+      isDownloading: Math.random() > 0.95,
+      tmdbInfo: tmdbInfo,
+      displayTitle: `${doc.title} (${doc.year})`,
+      fullPosterPath: `https://image.tmdb.org/t/p/w500/api/placeholder/500/750`,
+      fullBackdropPath: `https://image.tmdb.org/t/p/original/api/placeholder/1920/1080`
+    };
+  });
 }

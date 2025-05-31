@@ -10,9 +10,10 @@ interface Params {
 
 export async function GET(
   request: Request,
-  { params }: { params: Params }
-) {
-  const { mediaType, tmdbId: tmdbIdStr } = params;
+  { params }: { params: Promise<Params> }
+): Promise<NextResponse> {
+  // In Next.js 15, params is a Promise that must be awaited
+  const { mediaType, tmdbId: tmdbIdStr } = await params;
 
   if (mediaType !== 'movie' && mediaType !== 'tv') {
     return NextResponse.json(

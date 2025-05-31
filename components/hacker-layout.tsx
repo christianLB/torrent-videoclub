@@ -1,7 +1,6 @@
 'use client';
 
 import { ReactNode, useEffect, useState } from 'react';
-import { TerminalHeader } from './terminal-header';
 import Link from 'next/link';
 
 interface HackerLayoutProps {

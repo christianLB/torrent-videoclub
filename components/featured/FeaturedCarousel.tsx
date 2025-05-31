@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import useEmblaCarousel from 'embla-carousel-react';
 import Autoplay from 'embla-carousel-autoplay';
@@ -6,7 +7,7 @@ import { toast } from 'react-hot-toast';
 
 export interface CarouselItem {
   tmdbId: number;
-  title: string;
+  title?: string;
   posterPath?: string;
   backdropPath?: string;
   overview?: string;
@@ -45,10 +46,16 @@ const FeaturedCarousel: React.FC = () => {
         }
         const data: CarouselItem[] = await response.json();
         setCarouselItems(data);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Failed to fetch carousel content:', err);
-        setError(err.message || 'Failed to load items.');
-        toast.error(`Error loading carousel: ${err.message || 'Unknown error'}`);
+        let errorMessage = 'Failed to load items.';
+        if (err instanceof Error) {
+          errorMessage = err.message;
+        } else if (typeof err === 'string') {
+          errorMessage = err;
+        }
+        setError(errorMessage);
+        toast.error(`Error loading carousel: ${errorMessage}`);
       }
       setIsLoading(false);
     };
@@ -99,11 +106,13 @@ const FeaturedCarousel: React.FC = () => {
               <Link href={`/${item.mediaType}/${item.tmdbId}`} legacyBehavior>
                 <a className="block w-full h-full">
                   {item.backdropPath ? (
-                    <img
+                    <Image
                       src={`${TMDB_IMAGE_BASE_URL}w1280${item.backdropPath}`}
-                      alt={item.title}
-                      className="w-full h-full object-cover object-center transition-transform duration-300 ease-in-out group-hover:scale-105"
-                      onError={(e) => (e.currentTarget.style.display = 'none')} // Hide if image fails to load
+                      alt={item.title ?? 'Carousel item backdrop'}
+                      fill
+                      style={{ objectFit: 'cover', objectPosition: 'center' }}
+                      className="transition-transform duration-300 ease-in-out group-hover:scale-105"
+                      unoptimized={true} // Using unoptimized for now as TMDB is an external domain and might need config
                     />
                   ) : (
                     <div className="w-full h-full bg-gray-700 flex items-center justify-center">

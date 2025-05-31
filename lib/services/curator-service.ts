@@ -6,20 +6,18 @@
  * 
  * It uses a caching strategy to minimize API calls and ensure fast response times.
  */
-import { getMockFeaturedContent, CONTENT_CATEGORIES } from '../data/mock-featured';
+import { getMockFeaturedContent } from '../data/mock-featured';
 import { 
   FeaturedContent, 
   FeaturedCategory, 
   FeaturedItem, 
-  EnhancedMediaItem,
   ProwlarrItemData, // Added import
   TMDbEnrichmentData // Added import
 } from '../types/featured';
-import { CacheService } from './cache-service';
 import { redisService } from './server/redis-service';
 import { TrendingContentClient } from './trending-content-client';
-import { MetadataEnricher } from './metadata-enricher';
 import { serverConfig } from '../config';
+import { TMDbClient } from '../api/tmdb-client';
 
 /**
  * Service for curating and providing featured content
@@ -28,7 +26,7 @@ export class CuratorService {
   // API client instances
   private static prowlarrClient: TrendingContentClient | null = null;
   private static trendingClient: TrendingContentClient | null = null;
-  private static tmdbClient: any | null = null;
+  private static tmdbClient: TMDbClient | null = null;
   
   // Configuration options
   private static useRealData = false; // Will be set to true if environment variables are properly loaded
@@ -113,9 +111,8 @@ export class CuratorService {
     
     // Initialize TMDb client if API key is provided
     if (tmdbApiKey) {
-      // Use the static initialize method instead of instantiating
-      MetadataEnricher.initialize();
-      this.tmdbClient = MetadataEnricher;
+      // Initialize the TMDb client
+      this.tmdbClient = new TMDbClient(tmdbApiKey);
       console.log('[CuratorService] TMDb client initialized');
     } else {
       console.warn('[CuratorService] Missing TMDb API key');
@@ -167,7 +164,7 @@ export class CuratorService {
    */
   static async clearCache(): Promise<void> {
     if (redisService && 'clearByPrefix' in redisService) {
-      // @ts-ignore - We've checked that the method exists
+      // @ts-expect-error - Dynamic import checked that the method exists
       await redisService.clearByPrefix('featured:');
     }
   }
@@ -191,28 +188,55 @@ export class CuratorService {
         throw new Error('TrendingContentClient not initialized');
       }
 
+      // Interface for raw Prowlarr-like items with flexible properties
+      interface RawProwlarrItem {
+        guid?: string;
+        indexerId?: string;
+        indexer?: string;
+        title?: string;
+        size?: number;
+        protocol?: string;
+        publishDate?: string;
+        quality?: string;
+        seeders?: number;
+        leechers?: number;
+        infoUrl?: string;
+        downloadUrl?: string;
+        [key: string]: unknown;
+      }
+
       // Helper to map raw Prowlarr-like items to the new FeaturedItem structure
-      const mapRawToFeaturedItem = (rawItem: any, mediaTypeOverride: 'movie' | 'tv'): FeaturedItem => {
+      const mapRawToFeaturedItem = (rawItem: unknown, mediaTypeOverride: 'movie' | 'tv'): FeaturedItem => {
+        const raw = rawItem as RawProwlarrItem; // Type assertion to access properties
+        // Ensure protocol is one of the valid types ('torrent' | 'usenet')
+        const protocol = (raw.protocol === 'torrent' || raw.protocol === 'usenet') 
+          ? raw.protocol 
+          : 'torrent';
+
         const prowlarrData: ProwlarrItemData = {
-          guid: rawItem.guid || `guid_placeholder_${Date.now()}_${Math.random()}`,
-          indexerId: rawItem.indexerId || rawItem.indexer || 'unknown_indexer',
-          title: rawItem.title || 'Unknown Title',
-          size: rawItem.size || 0,
-          protocol: rawItem.protocol || 'torrent',
-          publishDate: rawItem.publishDate,
-          quality: rawItem.quality,
-          infoUrl: rawItem.infoUrl,
-          downloadUrl: rawItem.downloadUrl,
-          seeders: rawItem.seeders,
-          leechers: rawItem.leechers,
+          guid: raw.guid || `guid_placeholder_${Date.now()}_${Math.random()}`,
+          indexerId: raw.indexerId || raw.indexer || 'unknown_indexer',
+          title: raw.title || 'Unknown Title',
+          size: raw.size || 0,
+          protocol: protocol,
+          publishDate: raw.publishDate,
+          quality: raw.quality,
+          infoUrl: raw.infoUrl,
+          downloadUrl: raw.downloadUrl,
+          seeders: raw.seeders,
+          leechers: raw.leechers,
         };
+
+        // Ensure mediaType is one of the valid types ('movie' | 'tv')
+        const mediaType: 'movie' | 'tv' = 
+          (raw.mediaType === 'movie' || raw.mediaType === 'tv') ? raw.mediaType : mediaTypeOverride;
 
         return {
           ...prowlarrData,
-          mediaType: rawItem.mediaType || mediaTypeOverride,
-          tmdbInfo: rawItem.tmdbId ? { tmdbId: Number(rawItem.tmdbId) } : undefined,
-          inLibrary: rawItem.inLibrary || false,
-          isDownloading: rawItem.downloading || false,
+          mediaType: mediaType,
+          tmdbInfo: raw.tmdbId ? { tmdbId: Number(raw.tmdbId) } : undefined,
+          inLibrary: !!raw.inLibrary,
+          isDownloading: !!raw.downloading,
           isProcessing: false,
         };
       };
@@ -271,8 +295,8 @@ export class CuratorService {
       }
 
       return featuredContent;
-    } catch (error) {
-      console.error('[CuratorService] Error fetching fresh featured content:', error);
+    } catch (error: unknown) {
+      console.error('[CuratorService] Error fetching fresh featured content:', error instanceof Error ? error.message : String(error));
       return getMockFeaturedContent(); // Ensure mock data aligns
     }
   }
@@ -294,20 +318,61 @@ export class CuratorService {
         ...content.categories.flatMap(category => category.items)
       ].filter(item => item.guid !== 'placeholder_hero'); // Exclude pure placeholders
 
+      // Interface for TMDb API response genres
+      interface TMDbGenre {
+        id: number;
+        name: string;
+      }
+
+      // Interface for common properties in TMDb API responses
+      interface BaseTMDbResponse {
+        id: number;
+        overview?: string;
+        poster_path?: string;
+        backdrop_path?: string;
+        vote_average?: number;
+        genres?: TMDbGenre[];
+      }
+
+      // Interface for Movie response from TMDb API
+      interface TMDbMovieResponse extends BaseTMDbResponse {
+        title?: string;
+        release_date?: string;
+        runtime?: number;
+      }
+
+      // Interface for TV Show response from TMDb API
+      interface TMDbTVResponse extends BaseTMDbResponse {
+        name?: string;
+        first_air_date?: string;
+        episode_run_time?: number[];
+        number_of_seasons?: number;
+      }
+
+      // Type for either movie or TV response
+      type TMDbMediaResponse = TMDbMovieResponse | TMDbTVResponse;
+
       // Helper to map TMDb API response to TMDbEnrichmentData
-      const mapTmdbApiResponseToEnrichmentData = (apiResponse: any): Partial<TMDbEnrichmentData> => ({
-        tmdbId: apiResponse.id,
-        title: apiResponse.title || apiResponse.name,
-        year: apiResponse.release_date ? new Date(apiResponse.release_date).getFullYear() : (apiResponse.first_air_date ? new Date(apiResponse.first_air_date).getFullYear() : undefined),
-        posterPath: apiResponse.poster_path,
-        backdropPath: apiResponse.backdrop_path,
-        overview: apiResponse.overview,
-        voteAverage: apiResponse.vote_average,
-        genreIds: apiResponse.genres?.map((g: any) => g.id) || [],
-        releaseDate: apiResponse.release_date || apiResponse.first_air_date,
-        runtime: apiResponse.runtime || (apiResponse.episode_run_time && apiResponse.episode_run_time[0]),
-        seasons: apiResponse.number_of_seasons,
-      });
+      const mapTmdbApiResponseToEnrichmentData = (apiResponse: unknown): Partial<TMDbEnrichmentData> => {
+        const apiRes = apiResponse as TMDbMediaResponse;
+        return {
+          tmdbId: apiRes.id,
+          title: 'title' in apiRes ? apiRes.title : ('name' in apiRes ? apiRes.name : ''),
+          year: 'release_date' in apiRes && apiRes.release_date 
+            ? new Date(apiRes.release_date).getFullYear() 
+            : ('first_air_date' in apiRes && apiRes.first_air_date 
+              ? new Date(apiRes.first_air_date).getFullYear() 
+              : undefined),
+          posterPath: apiRes.poster_path,
+          backdropPath: apiRes.backdrop_path,
+          overview: apiRes.overview,
+          voteAverage: apiRes.vote_average,
+          genreIds: apiRes.genres?.map((g: TMDbGenre) => g.id) || [],
+          releaseDate: 'release_date' in apiRes ? apiRes.release_date : ('first_air_date' in apiRes ? apiRes.first_air_date : undefined),
+          runtime: 'runtime' in apiRes ? apiRes.runtime : ('episode_run_time' in apiRes && apiRes.episode_run_time ? apiRes.episode_run_time[0] : undefined),
+          seasons: 'number_of_seasons' in apiRes ? apiRes.number_of_seasons : undefined,
+        };
+      };
 
       const itemsToEnrich = allItems.filter(item => item.tmdbInfo?.tmdbId);
       if (itemsToEnrich.length === 0) {
@@ -319,24 +384,23 @@ export class CuratorService {
 
       for (const item of allItems) { // Iterate allItems to potentially enrich those without initial tmdbId via title/year
         try {
-          let tmdbApiResult: any;
-          if (item.tmdbInfo?.tmdbId) {
-            tmdbApiResult = await this.tmdbClient.getMediaDetails(item.tmdbInfo.tmdbId, item.mediaType);
-          } else if (item.title && item.publishDate) { // Fallback to title/year based search if no tmdbId
-            // This assumes tmdbClient has a method like searchMedia or similar
-            // For simplicity, this part is conceptual. Actual implementation depends on tmdbClient capabilities.
-            // console.log(`[CuratorService] Attempting title/year enrichment for: ${item.title}`);
-            // tmdbApiResult = await this.tmdbClient.searchMedia(item.title, new Date(item.publishDate).getFullYear(), item.mediaType);
-            // if (tmdbApiResult && tmdbApiResult.results && tmdbApiResult.results.length > 0) tmdbApiResult = tmdbApiResult.results[0]; else tmdbApiResult = null;
+          // Skip items without a tmdbId
+          if (!item.tmdbInfo?.tmdbId) continue;
+          
+          let details;
+          if (item.mediaType === 'movie') {
+            details = await this.tmdbClient?.getMovieDetails(item.tmdbInfo.tmdbId);
+          } else if (item.mediaType === 'tv') {
+            details = await this.tmdbClient?.getTvShowDetails(item.tmdbInfo.tmdbId);
           }
 
-          if (tmdbApiResult) {
-            const enrichmentData = mapTmdbApiResponseToEnrichmentData(tmdbApiResult);
-            item.tmdbInfo = { ...(item.tmdbInfo || {}), ...enrichmentData };
-            // mediaType could be refined here based on TMDb result if necessary
-            if (tmdbApiResult.media_type && item.mediaType !== tmdbApiResult.media_type) {
-              // console.log(`[CuratorService] Refining mediaType for ${item.title} from ${item.mediaType} to ${tmdbApiResult.media_type}`);
-              // item.mediaType = tmdbApiResult.media_type;
+          if (details) {
+            // Create a new object that merges the existing tmdbInfo with enrichment data
+            const enrichedData = mapTmdbApiResponseToEnrichmentData(details);
+            if (item.tmdbInfo) {
+              // Update the item's tmdbInfo without adding incompatible properties
+              Object.assign(item.tmdbInfo, enrichedData);
+              // We don't add lastChecked as it's not part of TMDbEnrichmentData type
             }
           } else if (item.tmdbInfo?.tmdbId) {
             console.warn(`[CuratorService] No TMDb data found for tmdbId: ${item.tmdbInfo.tmdbId}`);
@@ -346,8 +410,8 @@ export class CuratorService {
           console.warn(`[CuratorService] Failed to enrich item (GUID: ${item.guid}, Title: ${item.title}) with TMDb data: ${SENSITIVE_ERROR_MESSAGE}`);
         }
       }
-    } catch (error) {
-      console.error('[CuratorService] General error during TMDb enrichment process:', error);
+    } catch (error: unknown) {
+      console.error('[CuratorService] General error during TMDb enrichment process:', error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -370,8 +434,8 @@ export class CuratorService {
           console.log('[CuratorService] Returning cached featured content');
           return cached;
         }
-      } catch (redisError) {
-        console.warn('[CuratorService] Redis error, will fetch fresh data:', redisError);
+      } catch (redisError: unknown) {
+        console.warn('[CuratorService] Redis error, will fetch fresh data:', redisError instanceof Error ? redisError.message : String(redisError));
         // Continue execution to fetch fresh data
       }
       
@@ -387,9 +451,9 @@ export class CuratorService {
 
         await redisService.set(cacheKey, freshContent, ttl);
         console.log(`[CuratorService] Cached fresh content with TTL ${ttl}s`);
-      } catch (redisError) {
+      } catch (redisError: unknown) {
         // Just log the error but continue with fresh data
-        console.warn('[CuratorService] Failed to cache content, but continuing with fresh data');
+        console.warn('[CuratorService] Failed to cache content, but continuing with fresh data:', redisError instanceof Error ? redisError.message : String(redisError));
       }
       
       return freshContent;

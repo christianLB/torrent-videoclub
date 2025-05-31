@@ -4,14 +4,12 @@
 import { NextResponse } from 'next/server';
 import { CuratorService } from '@/lib/services/curator-service';
 
-// Import the initialization module to ensure the cache scheduler runs
-import { __init } from '@/app/api/_init';
 
 /**
  * GET handler for /api/featured
  * Returns featured content for the homepage
  */
-export async function GET(request: Request) {
+export async function GET() {
   try {
     console.log('Fetching featured content...');
     

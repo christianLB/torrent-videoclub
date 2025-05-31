@@ -1,6 +1,5 @@
 import Link from "next/link";
 import FeaturedPage from "@/components/featured/FeaturedPage";
-import { Navbar } from "@/components/navbar";
 
 export default function Home() {
   return (
