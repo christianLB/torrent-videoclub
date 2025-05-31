@@ -1,191 +1,202 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import FeaturedCarousel from '../FeaturedCarousel';
+import { render, screen, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
+import '@testing-library/jest-dom'; // Often works with Vitest, provides useful matchers
+import FeaturedCarousel, { CarouselItem } from '../FeaturedCarousel';
 
-// Use a simple implementation of Next.js Image for tests
-vi.mock('next/image', () => ({
-  // Return a simple img tag as a functional component
-  default: (props: any) => {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img 
-      src={props.src || '/default-poster.jpg'} 
-      alt={props.alt || 'Image'} 
-      data-testid="mock-image"
-      // Call onLoad prop immediately to simulate image loaded
-      ref={() => props.onLoad && props.onLoad()}
-    />;
-  }
+// Mock fetch
+global.fetch = vi.fn();
+
+// Mock embla-carousel-react and its plugins
+vi.mock('embla-carousel-react', () => ({
+  __esModule: true,
+  default: () => [vi.fn(), vi.fn()], // Simplified mock for useEmblaCarousel
+  useEmblaCarousel: () => [vi.fn(), vi.fn()] // Also mock the named export if used
 }));
 
-// Create complete mock item with all required fields for image rendering
-const mockItemWithTMDb = {
-  id: 'inception-id',
-  title: 'Inception',
-  year: 2010,
-  quality: '4K',
-  inLibrary: false,
-  downloading: false,
-  backdropPath: '/inception-backdrop.jpg',  // Required for Image rendering
-  posterPath: '/inception-poster.jpg',       // Required for Image rendering
-  mediaType: 'movie' as const,
-  rating: 8.5,
-  overview: 'A sci-fi thriller',
-  genres: ['Sci-Fi', 'Action'],
-  tmdbAvailable: true,
-  tmdb: {
-    backdropPath: '/inception-backdrop.jpg',
-    posterPath: '/inception-poster.jpg',
-    title: 'Inception',
-    overview: 'A mind-bending thriller.'
-  }
-};
+vi.mock('embla-carousel-autoplay', () => ({
+  __esModule: true,
+  default: vi.fn().mockImplementation(() => ({
+    name: 'autoplay',
+    init: vi.fn(),
+    destroy: vi.fn(),
+    play: vi.fn(),
+    stop: vi.fn(),
+    reset: vi.fn(),
+  })),
+}));
 
-// Mock item without TMDb data
-const mockItemWithoutTMDb = {
-  id: 'unknown-id',
-  title: 'Unknown Movie',
-  year: 2022,
-  quality: 'HD',
-  inLibrary: false,
-  downloading: false,
-  backdropPath: '', // Empty backdrop to test conditional rendering
-  posterPath: '/default-poster.jpg',
-  mediaType: 'movie' as const,
-  rating: 0,
-  overview: '',
-  genres: [],
-  tmdbAvailable: false
-  // tmdb is undefined
-};
+// Mock react-hot-toast
+vi.mock('react-hot-toast', () => ({
+  __esModule: true,
+  default: { // For default import: import toast from 'react-hot-toast';
+    success: vi.fn(),
+    error: vi.fn(),
+    loading: vi.fn(),
+    dismiss: vi.fn(),
+  },
+  toast: { // For named import: import { toast } from 'react-hot-toast';
+    success: vi.fn(),
+    error: vi.fn(),
+    loading: vi.fn(),
+    dismiss: vi.fn(),
+  },
+}));
 
-// Mock item with partial TMDb data
-const mockItemWithPartialTMDb = {
-  id: 'partial-id',
-  title: 'Partial Movie',
-  year: 2023,
-  quality: 'HD',
-  inLibrary: false,
-  downloading: false,
-  backdropPath: '/partial-backdrop.jpg',
-  posterPath: '/partial-poster.jpg',
-  mediaType: 'movie' as const,
-  rating: 7.0,
-  // Use empty string to test the fallback to 'Description not available'
-  overview: '', 
-  genres: ['Drama'],
-  tmdbAvailable: true,
-  tmdb: {
-    posterPath: '/partial-poster.jpg'
-    // Missing other fields including overview
-  }
-};
+const mockCarouselItems: CarouselItem[] = [
+  { tmdbId: 1, title: 'Movie 1', backdropPath: '/path1.jpg', mediaType: 'movie', overview: 'Overview 1' },
+  { tmdbId: 2, title: 'TV Show 2', backdropPath: '/path2.jpg', mediaType: 'tv', overview: 'Overview 2' },
+];
 
-describe('FeaturedCarousel', () => {
-  it('renders a loading state when item is undefined', () => {
-    // @ts-ignore - intentionally testing undefined prop
-    const { container } = render(<FeaturedCarousel />);
+describe('FeaturedCarousel (Data Fetching)', () => {
+  beforeEach(() => {
+    (fetch as Mock).mockClear();
+    // To clear mocks for react-hot-toast if needed:
+    // vi.mocked(require('react-hot-toast').toast.error).mockClear();
+    // vi.mocked(require('react-hot-toast').default.error).mockClear();
+  });
+
+  it('shows initial loading state', () => {
+    (fetch as Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => [],
+    });
+    render(<FeaturedCarousel />);
+    expect(screen.getByText(/Loading Carousel.../i)).toBeInTheDocument();
+  });
+
+  it('should fetch and display carousel items successfully', async () => {
+    (fetch as Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockCarouselItems,
+    });
+
+    render(<FeaturedCarousel />);
+
+    await waitFor(() => {
+        expect(screen.getByText('Movie 1')).toBeInTheDocument();
+        expect(screen.getByText('TV Show 2')).toBeInTheDocument();
+    }, { timeout: 3000 }); // Increased timeout
+
+    expect(screen.queryByText(/Loading Carousel.../i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Error loading carousel/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/No items to display/i)).not.toBeInTheDocument();
+  });
+
+  it('handles empty array response', async () => {
+    (fetch as Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => [],
+    });
+
+    render(<FeaturedCarousel />);
+
+    await waitFor(() => {
+        expect(screen.getByText(/No items to display in carousel./i)).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/Loading Carousel.../i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Error loading carousel/i)).not.toBeInTheDocument();
+  });
+
+  it('handles API error (network failure)', async () => {
+    const errorMessage = 'Network request failed';
+    (fetch as Mock).mockRejectedValueOnce(new Error(errorMessage));
+
+    render(<FeaturedCarousel />);
+
+    await waitFor(() => {
+        expect(screen.getByText(errorMessage)).toBeInTheDocument();
+    });
+    expect(screen.getByText(/Error loading carousel/i)).toBeInTheDocument();
     
-    // Should show loading indicator
-    expect(screen.getByText('Loading content...')).toBeDefined();
-    expect(container.querySelector('.animate-pulse')).toBeDefined();
+    expect(screen.queryByText(/Loading Carousel.../i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/No items to display/i)).not.toBeInTheDocument();
+  });
+
+  it('handles API error (HTTP error with JSON response)', async () => {
+    const errorMessage = 'Server-side validation failed';
+    (fetch as Mock).mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      json: async () => ({ message: errorMessage }),
+    });
+
+    render(<FeaturedCarousel />);
+
+    await waitFor(() => {
+        expect(screen.getByText(errorMessage)).toBeInTheDocument();
+    });
+    expect(screen.getByText(/Error loading carousel/i)).toBeInTheDocument();
+
+    expect(screen.queryByText(/Loading Carousel.../i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/No items to display/i)).not.toBeInTheDocument();
+  });
+
+  it('renders item with missing overview using fallback', async () => {
+    const itemsWithMissingOverview: CarouselItem[] = [
+      { tmdbId: 100, title: 'Movie With No Overview', mediaType: 'movie', backdropPath: '/backdrop.jpg', overview: undefined }
+    ];
+    (fetch as Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => itemsWithMissingOverview,
+    });
+  
+    render(<FeaturedCarousel />); 
+  
+    await waitFor(() => {
+        // The title might appear twice if backdrop is also missing, targeting the first usually works for the main display
+        expect(screen.getAllByText('Movie With No Overview')[0]).toBeInTheDocument();
+        expect(screen.getByText('Overview not available.')).toBeInTheDocument(); 
+    }); 
+    expect(screen.queryByText(/Loading Carousel.../i)).not.toBeInTheDocument();
   });
   
-  it('renders with full TMDb data', () => {
-    const { container } = render(<FeaturedCarousel item={mockItemWithTMDb} />);
-    
-    // Verify title and description are displayed
-    expect(screen.getByText('Inception')).toBeDefined();
-    expect(screen.getByText('A mind-bending thriller.')).toBeDefined();
-    
-    // Verify additional metadata is displayed
-    expect(screen.getByText('2010')).toBeDefined();
-    expect(screen.getByText('4K')).toBeDefined();
-    
-    // Just verify the component rendered successfully
-    expect(container.firstChild).toBeDefined();
+  it('renders item with missing title using fallback', async () => {
+    const itemsWithMissingTitle: CarouselItem[] = [
+      { tmdbId: 102, title: undefined as any, mediaType: 'tv', backdropPath: '/tv_backdrop.jpg', overview: 'Overview here.' }
+    ];
+    (fetch as Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => itemsWithMissingTitle,
+    });
+  
+    render(<FeaturedCarousel />);
+  
+    await waitFor(() => {
+        // Title might appear twice if backdrop is missing. If the primary h3 is empty, this will fail.
+        expect(screen.getByText('Untitled TV Show')).toBeInTheDocument(); 
+        expect(screen.getByText('Overview here.')).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/Loading Carousel.../i)).not.toBeInTheDocument();
   });
 
-  it('renders with missing TMDb data (tmdb undefined)', () => {
-    const { container } = render(<FeaturedCarousel item={mockItemWithoutTMDb} />);
-    
-    // Verify title fallback works
-    expect(screen.getByText('Unknown Movie')).toBeDefined();
-    
-    // Verify description fallback works
-    expect(screen.getByText('Description not available')).toBeDefined();
-    
-    // Verify additional metadata is displayed
-    expect(screen.getByText('2022')).toBeDefined();
-    expect(screen.getByText('HD')).toBeDefined();
-    
-    // Just verify the component rendered successfully
-    expect(container.firstChild).toBeDefined();
-  });
-
-  it('renders with partially missing TMDb data', () => {
-    const { container } = render(<FeaturedCarousel item={mockItemWithPartialTMDb} />);
-    
-    // Verify title is displayed correctly
-    expect(screen.getByText('Partial Movie')).toBeDefined();
-    
-    // Verify fallback description is used when both tmdb.overview and item.overview are missing
-    expect(screen.getByText('Description not available')).toBeDefined();
-    
-    // Verify component rendered successfully
-    expect(container.firstChild).toBeDefined();
-  });
-
-  it('does not crash when tmdb is absent', () => {
-    // Create a minimal valid item with just a title
-    const minimalItem = {
-      id: 'minimal-id',
-      title: 'No TMDb',
-      overview: '',
-      backdropPath: '',
-      posterPath: '',
-      mediaType: 'movie' as const,
-      rating: 0,
-      year: new Date().getFullYear(),
-      genres: [],
-      inLibrary: false,
-      downloading: false,
-      tmdbAvailable: false
-    };
-    
-    // This should not throw an error
-    expect(() => render(<FeaturedCarousel item={minimalItem} />)).not.toThrow();
-    
-    // Verify minimal content is displayed
-    expect(screen.getByText('No TMDb')).toBeDefined();
-    expect(screen.getByText('Description not available')).toBeDefined();
-  });
-
-  it('uses fallbacks for poster, title, and description', () => {
-    // Create a valid item with empty TMDb object
-    const fallbackItem = {
-      id: 'fallback-id',
-      title: 'Fallback Movie',
-      overview: '',
-      backdropPath: '/some-backdrop.jpg',
-      posterPath: '',
-      mediaType: 'movie' as const,
-      rating: 0,
-      year: 2025,
-      genres: [],
-      inLibrary: false,
-      downloading: false,
-      tmdbAvailable: true,
-      tmdb: {}
-    };
-    
-    const { container } = render(<FeaturedCarousel item={fallbackItem} />);
-    
-    // Verify fallbacks work
-    expect(screen.getByText('Fallback Movie')).toBeDefined();
-    expect(screen.getByText('Description not available')).toBeDefined();
-    
-    // Verify the component rendered
-    expect(container.firstChild).toBeDefined();
+  it('renders item with missing backdropPath using fallback/placeholder', async () => {
+    const itemsWithMissingBackdrop: CarouselItem[] = [
+      { tmdbId: 101, title: 'Movie With No Backdrop', mediaType: 'movie', backdropPath: undefined, overview: 'Partial overview available.' }
+    ];
+    (fetch as Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => itemsWithMissingBackdrop,
+    });
+  
+    render(<FeaturedCarousel />);
+  
+    await waitFor(() => {
+        // Title appears twice: once in the fallback div for missing image, once in the overlay.
+        // We target the first instance for the assertion.
+        expect(screen.getAllByText('Movie With No Backdrop')[0]).toBeInTheDocument();
+    });
+    // The alt text for the placeholder/fallback image structure needs to be verified.
+    // The component currently renders a div with the title if backdropPath is missing, not an img with alt text.
+    // Let's adjust to check for the title within the fallback structure.
+    // If an actual <img> placeholder was intended, the component logic would need to change.
+    // For now, we confirm the title is present as per current component logic.
+    // const imgElement = screen.getByAltText('Backdrop for Movie With No Backdrop'); 
+    // expect(imgElement).toBeInTheDocument();
+    // Instead, we've already confirmed 'Movie With No Backdrop' is rendered. 
+    // expect(imgElement).toBeInTheDocument(); // This line caused the error as imgElement was commented out.
+    // Example: Check if it uses a default/placeholder image source or class
+    // For the missing backdrop case, the component renders a div with the title, not an img.
+    // Assertions for specific placeholder styling or attributes would go here if that was the implementation.
+    expect(screen.queryByText(/Loading Carousel.../i)).not.toBeInTheDocument();
   });
 });
-

@@ -10,9 +10,10 @@ interface MediaCardProps {
   inLibrary?: boolean; // Added to reflect library status
   // ProwlarrData could be added here later if we decide to fetch it per card
   onAddToLibrary?: (tmdbId: number, mediaType: 'movie' | 'tv', title: string) => void | Promise<void>; // Updated signature
+  isAddingToLibraryGlobal?: boolean; // Added to reflect global loading state for add operations
 }
 
-const MediaCard: React.FC<MediaCardProps> = ({ item, onAddToLibrary, inLibrary }) => {
+const MediaCard: React.FC<MediaCardProps> = ({ item, onAddToLibrary, inLibrary, isAddingToLibraryGlobal }) => {
   // Destructure TMDBMediaItem fields
   const {
     tmdbId,
@@ -131,7 +132,7 @@ const MediaCard: React.FC<MediaCardProps> = ({ item, onAddToLibrary, inLibrary }
             <button 
               className="bg-green-600 hover:bg-green-700 text-white w-full py-1 rounded text-sm mb-2 flex justify-center items-center disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleAddToLibrary}
-              disabled={isAddingToLibrary || inLibrary}
+              disabled={isAddingToLibrary || inLibrary || isAddingToLibraryGlobal}
               data-testid="media-card-add-to-library"
             >
               {isAddingToLibrary ? (

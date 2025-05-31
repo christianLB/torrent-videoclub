@@ -274,6 +274,14 @@ export class TMDbClient {
     return this.fetchMediaList(`/trending/tv/${timeWindow}`, page, this.normalizeTvShowResult.bind(this));
   }
 
+  async getUpcomingMovies(page: number = 1): Promise<TMDBMediaItem[]> {
+    return this.fetchMediaList('/movie/upcoming', page, this.normalizeMovieResult.bind(this));
+  }
+
+  async getTopRatedMovies(page: number = 1): Promise<TMDBMediaItem[]> {
+    return this.fetchMediaList('/movie/top_rated', page, this.normalizeMovieResult.bind(this));
+  }
+
   // Generic helper for fetching lists of media items
   private async fetchMediaList(
     endpoint: string, 

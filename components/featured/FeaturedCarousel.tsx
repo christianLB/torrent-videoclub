@@ -1,216 +1,153 @@
-import React, { useState } from 'react';
-import Image from 'next/image';
-import { TMDBMediaItem } from '@/lib/types/tmdb'; // Changed from FeaturedItem
-import DownloadIndicator from './DownloadIndicator';
-import LibraryIndicator from './LibraryIndicator';
+import React, { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
+import useEmblaCarousel from 'embla-carousel-react';
+import Autoplay from 'embla-carousel-autoplay';
 import { toast } from 'react-hot-toast';
 
-interface ProwlarrData {
-  guid?: string;
-  indexerId?: string | number;
-  quality?: string;
-  inLibrary?: boolean;
-  isDownloading?: boolean;
-  isProcessing?: boolean;
+export interface CarouselItem {
+  tmdbId: number;
+  title: string;
+  posterPath?: string;
+  backdropPath?: string;
+  overview?: string;
+  mediaType: 'movie' | 'tv';
 }
 
-interface FeaturedCarouselProps {
-  item?: TMDBMediaItem;
-  prowlarrData?: ProwlarrData; // For status display (inLibrary, quality etc.)
-  // onAddToLibrary now takes tmdbId, mediaType, and title
-  onAddToLibrary?: (tmdbId: number, mediaType: 'movie' | 'tv', title: string) => void | Promise<void>;
-}
+const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/';
 
-const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({ item, prowlarrData, onAddToLibrary }) => {
-  // State to track when the high-quality image has loaded
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const [smallImageLoaded, setSmallImageLoaded] = useState(false);
-  const [isAddingToLibrary, setIsAddingToLibrary] = useState(false);
+const FeaturedCarousel: React.FC = () => {
+  const [carouselItems, setCarouselItems] = useState<CarouselItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Handle case where item is completely undefined or null
-  if (!item) {
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true }, [Autoplay()]);
+
+  useEffect(() => {
+    const fetchCarouselContent = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch('/api/featured/carousel-content');
+        if (!response.ok) {
+          let message = `HTTP error! status: ${response.status}`;
+          try {
+            const errorData = await response.json();
+            if (errorData && errorData.error) {
+              message = errorData.error;
+            } else if (errorData && errorData.message) { // Check for message property as a fallback
+              message = errorData.message;
+            }
+          } catch (jsonError) {
+            console.error('Failed to parse error JSON from API:', jsonError);
+            // Stick with the original HTTP status error if JSON parsing fails
+          }
+          throw new Error(message);
+        }
+        const data: CarouselItem[] = await response.json();
+        setCarouselItems(data);
+      } catch (err: any) {
+        console.error('Failed to fetch carousel content:', err);
+        setError(err.message || 'Failed to load items.');
+        toast.error(`Error loading carousel: ${err.message || 'Unknown error'}`);
+      }
+      setIsLoading(false);
+    };
+
+    fetchCarouselContent();
+  }, []);
+
+  const scrollPrev = useCallback(() => {
+    if (emblaApi) emblaApi.scrollPrev();
+  }, [emblaApi]);
+
+  const scrollNext = useCallback(() => {
+    if (emblaApi) emblaApi.scrollNext();
+  }, [emblaApi]);
+
+  if (isLoading) {
     return (
-      <div className="relative w-full h-[400px] overflow-hidden rounded-lg bg-gray-900 flex items-center justify-center">
-        <div className="text-center p-6">
-          <div className="animate-pulse flex flex-col items-center">
-            <div className="h-8 bg-gray-700 rounded w-3/4 mb-4"></div>
-            <div className="h-4 bg-gray-700 rounded w-1/2 mb-2"></div>
-            <div className="h-4 bg-gray-700 rounded w-2/3 mb-2"></div>
-            <div className="h-4 bg-gray-700 rounded w-1/2"></div>
-          </div>
-          <p className="text-gray-400 mt-4">Loading content...</p>
-        </div>
+      <div className="w-full h-64 md:h-96 flex items-center justify-center bg-gray-800 rounded-lg shadow-lg">
+        <p className="text-gray-400 text-lg">Loading Carousel...</p>
+        {/* You could add a spinner here */}
       </div>
     );
   }
-  
-  // Destructure TMDB data from item prop
-  const {
-    title: displayTitle = 'Untitled Content',
-    overview: displayOverview = 'No description available',
-    backdropPath,
-    releaseDate, // For movies
-    firstAirDate, // For TV shows
-    genres: displayGenres = [],
-    mediaType,
-    // tmdbId, // Available if needed
-  } = item || {};
 
-  // Destructure Prowlarr-specific data from prowlarrData prop
-  const {
-    guid,
-    indexerId,
-    quality,
-    inLibrary = false,
-    isDownloading = false,
-    isProcessing = false,
-  } = prowlarrData || {};
-
-  const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w1280'; // Or 'original'
-  const fullBackdropPath = backdropPath ? `${TMDB_IMAGE_BASE_URL}${backdropPath}` : '/api/placeholder/1920/1080';
-
-  let displayYearCalc = new Date().getFullYear();
-  if (item && mediaType === 'movie' && releaseDate) {
-    displayYearCalc = new Date(releaseDate).getFullYear();
-  } else if (item && mediaType === 'tv' && firstAirDate) {
-    displayYearCalc = new Date(firstAirDate).getFullYear();
+  if (error) {
+    return (
+      <div className="w-full h-64 md:h-96 flex flex-col items-center justify-center bg-red-900 text-white p-4 rounded-lg shadow-lg">
+        <p className="text-xl font-semibold">Error loading carousel</p>
+        <p>{error}</p>
+      </div>
+    );
   }
-  const displayYear = displayYearCalc;
 
-  
-  // Handle adding to library
-  const handleAddToLibraryClick = async () => {
-    console.log('[FeaturedCarousel] handleAddToLibraryClick triggered. Item:', item, 'onAddToLibrary present:', !!onAddToLibrary);
-    // Check for essential TMDB data for the add action
-    if (!item?.tmdbId || !item?.mediaType || !displayTitle) {
-      toast.error('Cannot add to library: Missing essential TMDB item data (ID, Media Type, or Title)');
-      console.error('[FeaturedCarousel] Missing essential TMDB data for add to library:', { tmdbId: item?.tmdbId, mediaType: item?.mediaType, title: displayTitle });
-      return;
-    }
-
-    if (onAddToLibrary) {
-      setIsAddingToLibrary(true); // Set loading state for this button
-      try {
-        // Call onAddToLibrary with tmdbId, mediaType, and title from the TMDBMediaItem
-        await onAddToLibrary(item.tmdbId, item.mediaType, displayTitle);
-        // Success toast is expected to be handled by the onAddToLibrary callback (i.e., in FeaturedPage)
-      } catch (error) {
-        console.error('[FeaturedCarousel] Error during onAddToLibrary call:', error);
-        // Error toast is expected to be handled by the onAddToLibrary callback
-      } finally {
-        setIsAddingToLibrary(false); // Reset loading state for this button
-      }
-    } else {
-      // Fallback: Direct API call
-      console.warn('[FeaturedCarousel] onAddToLibrary not provided, using fallback API call. This should be handled by the parent.');
-      setIsAddingToLibrary(true); // Set loading for fallback
-      try {
-        const response = await fetch('/api/prowlarr/add', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          // Fallback direct API call - this part is less likely to be used if onAddToLibrary is always provided.
-          // If it were used, it would also need to be adapted to potentially find guid/indexerId first.
-          // For now, keeping its structure but acknowledging it's a fallback.
-          body: JSON.stringify({ tmdbId: item?.tmdbId, mediaType: item?.mediaType, title: displayTitle, message: 'Fallback - Prowlarr GUID/IndexerID would need to be resolved' })
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ message: `Failed to add item (HTTP ${response.status})` }));
-          throw new Error(errorData.message || `Failed to add item (HTTP ${response.status})`);
-        }
-        const result = await response.json();
-        toast.success(result.message || `${displayTitle} added to library successfully.`);
-      } catch (error) {
-        console.error('[FeaturedCarousel] Error in fallback API call:', error);
-        toast.error(`Failed to add to library: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      } finally {
-        setIsAddingToLibrary(false); // Reset loading for fallback
-      }
-    }
-  };
+  if (carouselItems.length === 0) {
+    return (
+      <div className="w-full h-64 md:h-96 flex items-center justify-center bg-gray-700 rounded-lg shadow-lg">
+        <p className="text-gray-300">No items to display in carousel.</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="relative w-full h-[400px] overflow-hidden rounded-lg bg-gray-900">
-      {/* Backdrop Image with gradient overlay */}
-      <div className="absolute inset-0">
-        {fullBackdropPath && (
-          <>
-            {/* Loading skeleton/pulse animation */}
-            <div className={`absolute inset-0 bg-gray-900 transition-opacity duration-500 ${smallImageLoaded ? 'opacity-0' : 'opacity-100'}`}>
-              <div className="animate-pulse w-full h-full bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900"></div>
+    <div className="relative w-full mx-auto overflow-hidden rounded-lg shadow-2xl embla">
+      <div className="overflow-hidden" ref={emblaRef}>
+        <div className="flex embla__container">
+          {carouselItems.map((item) => (
+            <div key={item.tmdbId} className="embla__slide relative flex-[0_0_100%] aspect-[16/7]">
+              <Link href={`/${item.mediaType}/${item.tmdbId}`} legacyBehavior>
+                <a className="block w-full h-full">
+                  {item.backdropPath ? (
+                    <img
+                      src={`${TMDB_IMAGE_BASE_URL}w1280${item.backdropPath}`}
+                      alt={item.title}
+                      className="w-full h-full object-cover object-center transition-transform duration-300 ease-in-out group-hover:scale-105"
+                      onError={(e) => (e.currentTarget.style.display = 'none')} // Hide if image fails to load
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gray-700 flex items-center justify-center">
+                      <p className="text-white text-xl">{item.title || (item.mediaType === 'movie' ? 'Untitled Movie' : 'Untitled TV Show')}</p>
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent p-4 md:p-8 flex flex-col justify-end">
+                    <h3 className="text-white text-xl md:text-3xl lg:text-4xl font-bold drop-shadow-lg">
+                      {item.title || (item.mediaType === 'movie' ? 'Untitled Movie' : 'Untitled TV Show')}
+                    </h3>
+                    <p className="text-gray-300 text-xs md:text-sm mt-1 md:mt-2 line-clamp-2 md:line-clamp-3 drop-shadow-md">
+                        {item.overview || 'Overview not available.'}
+                      </p>
+                  </div>
+                </a>
+              </Link>
             </div>
-            
-            {/* Low quality placeholder image (loads first) */}
-            <Image
-              src={fullBackdropPath} // Changed
-              alt={`${displayTitle} small backdrop`} // Changed
-              fill
-              style={{ objectFit: 'cover' }}
-              onLoad={() => setSmallImageLoaded(true)}
-              className={`transition-opacity duration-300 opacity-50 ${smallImageLoaded ? 'opacity-50' : 'opacity-0'} ${imageLoaded ? 'opacity-0' : 'opacity-50'}`}
-              priority
-            />
-            
-            {/* High quality final image (loads after) */}
-            <Image
-              src={fullBackdropPath} // Changed
-              alt={displayTitle} // Changed
-              fill
-              style={{ objectFit: 'cover' }}
-              onLoad={() => setImageLoaded(true)}
-              className={`transition-opacity duration-500 opacity-50 ${imageLoaded ? 'opacity-50' : 'opacity-0'}`}
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 100vw, 100vw" /* Optimize rendering sizes */
-              priority={false}
-              loading="eager" /* Still load this somewhat eagerly as it's the hero image */
-            />
-          </>
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/80 to-transparent" />
+          ))}
+        </div>
       </div>
 
-      {/* Content */}
-      <div className="relative h-full flex flex-col justify-end p-6">
-        <div className="flex items-center space-x-2 mb-1">
-          {inLibrary && <LibraryIndicator />}
-          {/* Pass isProcessing to DownloadIndicator if it can handle it, or adjust logic */}
-          {(isDownloading || isProcessing) && <DownloadIndicator progress={0} isProcessing={isProcessing} />}
-          {/* {quality && <span className="text-xs border border-green-500 text-green-500 px-2 py-0.5 rounded">
-            {quality}
-          </span>} */}
-          {displayYear && !isNaN(displayYear) && <span className="text-xs text-gray-400">{displayYear}</span>} {/* Ensured displayYear is a number */}
-          {/* Optionally display genres */}
-          {displayGenres && displayGenres.length > 0 && (
-            <span className="text-xs text-gray-400 hidden md:block">
-              {displayGenres.map(genre => genre.name).join(' · ')}
-            </span>
-          )}
-        </div>
-        <h1 className="text-4xl font-bold text-white mb-2">{displayTitle}</h1> {/* Changed */}
-        <p className="text-gray-300 line-clamp-3 mb-4 max-w-2xl">
-          {displayOverview} {/* Changed */}
-        </p>
-        <div className="flex space-x-4">
-          <button 
-            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md font-medium flex items-center"
+      {carouselItems.length > 1 && (
+        <>
+          <button
+            className="embla__prev absolute top-1/2 left-2 md:left-4 transform -translate-y-1/2 bg-black/50 hover:bg-black/75 text-white p-2 md:p-3 rounded-full focus:outline-none transition-opacity duration-300 z-10"
+            onClick={scrollPrev}
+            aria-label="Previous slide"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 md:w-6 md:h-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
             </svg>
-            Play
           </button>
-          <button 
-            className="bg-gray-800 hover:bg-gray-700 text-white px-6 py-2 rounded-md font-medium flex items-center"
-            onClick={handleAddToLibraryClick}
-            disabled={isAddingToLibrary || inLibrary}  
-            data-testid="featured-add-to-library"
+          <button
+            className="embla__next absolute top-1/2 right-2 md:right-4 transform -translate-y-1/2 bg-black/50 hover:bg-black/75 text-white p-2 md:p-3 rounded-full focus:outline-none transition-opacity duration-300 z-10"
+            onClick={scrollNext}
+            aria-label="Next slide"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 md:w-6 md:h-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
             </svg>
-            {isAddingToLibrary ? 'Adding...' : inLibrary ? 'In Library' : 'Add to Library'}
           </button>
-        </div>
-      </div>
+        </>
+      )}
+      {/* Add Embla dots or other navigation if desired */}
     </div>
   );
 };

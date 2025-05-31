@@ -155,6 +155,24 @@ class TMDBDataService {
       'tv'
     );
   }
+
+  async getOrFetchUpcomingMovies(page: number = 1): Promise<TMDBMediaItem[]> {
+    const listCacheKey = `upcoming-movies:p${page}`;
+    return this.getOrFetchMediaList(
+      listCacheKey,
+      () => this.tmdbClient.getUpcomingMovies(page),
+      'movie'
+    );
+  }
+
+  async getOrFetchTopRatedMovies(page: number = 1): Promise<TMDBMediaItem[]> {
+    const listCacheKey = `top-rated-movies:p${page}`;
+    return this.getOrFetchMediaList(
+      listCacheKey,
+      () => this.tmdbClient.getTopRatedMovies(page),
+      'movie'
+    );
+  }
 }
 
 // Export a singleton instance (only for server-side use!)
