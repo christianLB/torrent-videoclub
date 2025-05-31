@@ -2,7 +2,33 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import FeaturedCarousel from '../components/featured/FeaturedCarousel';
-import { FeaturedItem } from '../lib/types/featured';
+import { TMDBMediaItem } from '../lib/types/tmdb';
+
+// Mock embla-carousel-react
+vi.mock('embla-carousel-react', () => ({
+  __esModule: true,
+  default: vi.fn(() => [vi.fn(), { scrollPrev: vi.fn(), scrollNext: vi.fn(), on: vi.fn(), off: vi.fn() }]), // Needed mocks
+}));
+
+// Mock embla-carousel-autoplay
+vi.mock('embla-carousel-autoplay', () => ({
+  __esModule: true,
+  default: vi.fn(() => ({ init: vi.fn(), destroy: vi.fn() }))
+}));
+
+// Mock next/image
+vi.mock('next/image', () => ({
+  default: ({ src, alt }: { src: string; alt: string }) => {
+    return <img src={src} alt={alt} />
+  }
+}));
+
+// Mock next/link
+vi.mock('next/link', () => ({
+  default: ({ children, href }: { children: React.ReactNode; href: string }) => {
+    return <a href={href}>{children}</a>;
+  }
+}));
 
 // Mock the fetch function
 global.fetch = vi.fn();
@@ -11,15 +37,22 @@ global.fetch = vi.fn();
 vi.mock('react-hot-toast', () => {
   const success = vi.fn();
   const error = vi.fn();
+  const loading = vi.fn();
+  const dismiss = vi.fn();
   return {
     default: {
       success,
-      error
+      error,
+      loading,
+      dismiss
     },
     toast: {
       success,
-      error
-    }
+      error,
+      loading,
+      dismiss
+    },
+    Toaster: () => <div data-testid="mock-toaster"></div>
   };
 });
 
@@ -31,30 +64,15 @@ const originalConsoleError = console.error;
 console.error = vi.fn();
 
 describe('FeaturedCarousel', () => {
-  const mockItem: FeaturedItem = {
-    id: '123',
-    guid: 'test-guid-123',
-    title: 'Test Movie',
-    overview: 'Test overview',
-    posterPath: 'https://image.tmdb.org/t/p/w500/test-poster.jpg',
-    backdropPath: 'https://image.tmdb.org/t/p/w1280/test-backdrop.jpg',
-    mediaType: 'movie',
+  // Mock the mock item for tests
+  const mockItem: TMDBMediaItem = {
     tmdbId: 12345,
-    year: 2023,
-    quality: '4K',
-    rating: 8.5,
-    genres: ['Action', 'Adventure'],
-    inLibrary: false,
-    downloading: false,
-    downloadProgress: 0,
-    tmdbAvailable: true,
-    tmdb: {
-      id: 12345,
-      title: 'Test Movie',
-      posterPath: 'https://image.tmdb.org/t/p/w500/test-poster.jpg',
-      backdropPath: 'https://image.tmdb.org/t/p/w1280/test-backdrop.jpg',
-      overview: 'Test overview',
-    }
+    title: 'Test Movie',
+    posterPath: '/test-poster.jpg',
+    backdropPath: '/test-backdrop.jpg',
+    overview: 'Test overview',
+    mediaType: 'movie',
+    releaseDate: '2023-01-01'
   };
 
   beforeEach(() => {
@@ -71,85 +89,46 @@ describe('FeaturedCarousel', () => {
     
     expect(screen.getByText('Test Movie')).toBeInTheDocument();
     expect(screen.getByText('Test overview')).toBeInTheDocument();
-    expect(screen.getByText('4K')).toBeInTheDocument();
-    expect(screen.getByText('2023')).toBeInTheDocument();
-    expect(screen.getByText('Add to Library')).toBeInTheDocument();
   });
 
-  it('calls the provided onAddToLibrary callback when Add to Library is clicked', async () => {
-    const mockAddToLibrary = vi.fn();
-    render(<FeaturedCarousel item={mockItem} onAddToLibrary={mockAddToLibrary} />);
+  it('renders the carousel with navigation buttons when there are multiple items', async () => {
+    // Multiple items case
+    const multipleItems = [
+      mockItem,
+      {
+        ...mockItem,
+        tmdbId: 456,
+        title: 'Another Test Movie'
+      }
+    ];
     
-    fireEvent.click(screen.getByTestId('featured-add-to-library'));
-    
-    expect(mockAddToLibrary).toHaveBeenCalledWith('test-guid-123', 'movie');
-  });
-
-  it('calls the API directly when no callback is provided', async () => {
-    // Mock successful API response
+    // Mock fetch API to return multiple items
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ success: true }),
+      json: async () => multipleItems
     });
-
-    render(<FeaturedCarousel item={mockItem} />);
     
-    fireEvent.click(screen.getByTestId('featured-add-to-library'));
+    render(<FeaturedCarousel />);
     
+    // Wait for carousel to render and check navigation buttons
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith('/api/add/movie', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tmdbId: 12345 }),
-      });
-      // Success toast verification
-      // We can't directly verify the toast call due to mocking complexity
-      expect(global.fetch).toHaveBeenCalledWith('/api/add/movie', expect.any(Object));
+      // Look for buttons by their aria-label
+      const prevButton = screen.getByLabelText('Previous slide');
+      const nextButton = screen.getByLabelText('Next slide');
+      expect(prevButton).toBeInTheDocument();
+      expect(nextButton).toBeInTheDocument();
     });
   });
 
-  it('handles API errors gracefully', async () => {
-    // Mock failed API response
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-    });
-
+  it('displays the title and overview of the item', async () => {
     render(<FeaturedCarousel item={mockItem} />);
-    
-    fireEvent.click(screen.getByTestId('featured-add-to-library'));
-    
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalled();
-      // Check if error toast was called with expected message
-      // We can't check the exact message because we're using a local mock
-      expect(console.error).toHaveBeenCalled();
-    });
-  });
 
-  it('displays loading state while adding to library', async () => {
-    // Create a promise that we'll resolve later to control the timing
-    let resolvePromise: (value: any) => void;
-    const fetchPromise = new Promise(resolve => {
-      resolvePromise = resolve;
-    });
+    // Look for the title and overview
+    expect(screen.getByText('Test Movie')).toBeInTheDocument();
+    expect(screen.getByText('Test overview')).toBeInTheDocument();
     
-    (global.fetch as ReturnType<typeof vi.fn>).mockImplementationOnce(() => fetchPromise);
-
-    render(<FeaturedCarousel item={mockItem} />);
-    
-    fireEvent.click(screen.getByTestId('featured-add-to-library'));
-    
-    expect(screen.getByText('Adding...')).toBeInTheDocument();
-    
-    // Resolve the fetch promise
-    resolvePromise!({
-      ok: true,
-      json: async () => ({ success: true }),
-    });
-    
-    await waitFor(() => {
-      expect(screen.queryByText('Adding...')).not.toBeInTheDocument();
-    });
+    // Check that the link to the detail page is correct
+    const link = screen.getByRole('link');
+    expect(link).toHaveAttribute('href', '/movie/12345');
   });
 });

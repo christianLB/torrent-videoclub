@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import FeaturedCarousel from '../../../components/featured/FeaturedCarousel';
+import FeaturedCarouselItem from '../../../components/featured/FeaturedCarouselItem';
 import { TMDBMediaItem, TMDBGenre } from '../../../lib/types/tmdb';
 
 // Mock next/image since it's used in the component
@@ -40,7 +40,7 @@ describe('FeaturedCarousel Integration Tests', () => {
       genres: [{ id: 878, name: 'Science Fiction' }]
     });
 
-    const { container } = render(<FeaturedCarousel item={testItem} />);
+    const { container } = render(<FeaturedCarouselItem item={testItem} />);
     
     expect(screen.getByText('Awesome Movie Title')).toBeDefined();
     expect(screen.getByText('An awesome overview of an awesome movie.')).toBeDefined();
@@ -59,7 +59,7 @@ describe('FeaturedCarousel Integration Tests', () => {
       posterPath: '/minimal-poster.jpg' // Has a poster though
     });
 
-    render(<FeaturedCarousel item={testItem} />);
+    render(<FeaturedCarouselItem item={testItem} />);
     
     expect(screen.getByText('Movie With Minimal Info')).toBeDefined();
     // Check for the component's internal fallback for overview
@@ -77,7 +77,7 @@ describe('FeaturedCarousel Integration Tests', () => {
       releaseDate: '2022-07-01'
     });
 
-    render(<FeaturedCarousel item={testItem} />);
+    render(<FeaturedCarouselItem item={testItem} />);
     
     expect(screen.getByText('Item With No Overview Provided')).toBeDefined();
     expect(screen.getByText('No description available')).toBeDefined(); // Component's default

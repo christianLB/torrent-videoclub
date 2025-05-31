@@ -76,7 +76,7 @@ export async function POST(request: Request) {
     // If it's not an Error instance or a string, we stick with the generic message or log more details.
 
     return NextResponse.json(
-      { success: false, message: errorMessage }, // Changed 'error' key to 'message' for consistency with success response, removed errorDetails
+      { error: errorMessage }, // Use 'error' key to match test expectations
       { status: 500 }
     );
   }

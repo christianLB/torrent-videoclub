@@ -124,7 +124,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(
-      { success: false, message: errorMessage },
+      { error: errorMessage },
       { status: 500 }
     );
   }

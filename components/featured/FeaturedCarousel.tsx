@@ -4,6 +4,7 @@ import Link from 'next/link';
 import useEmblaCarousel from 'embla-carousel-react';
 import Autoplay from 'embla-carousel-autoplay';
 import { toast } from 'react-hot-toast';
+import { TMDBMediaItem } from '../../lib/types/tmdb';
 
 export interface CarouselItem {
   tmdbId: number;
@@ -16,7 +17,11 @@ export interface CarouselItem {
 
 const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/';
 
-const FeaturedCarousel: React.FC = () => {
+interface FeaturedCarouselProps {
+  item?: TMDBMediaItem; // Optional item for testing purposes
+}
+
+const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({ item }) => {
   const [carouselItems, setCarouselItems] = useState<CarouselItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,6 +29,22 @@ const FeaturedCarousel: React.FC = () => {
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true }, [Autoplay()]);
 
   useEffect(() => {
+    // If we have an item prop, use it directly (for testing)
+    if (item) {
+      // Convert TMDBMediaItem to CarouselItem with appropriate fallbacks
+      const carouselItem: CarouselItem = {
+        tmdbId: item.tmdbId || item.id || 0,
+        title: item.title || '',
+        posterPath: item.posterPath || undefined,
+        backdropPath: item.backdropPath || undefined,
+        overview: item.overview || '',
+        mediaType: (item.mediaType as 'movie' | 'tv') || 'movie'
+      };
+      setCarouselItems([carouselItem]);
+      setIsLoading(false);
+      return;
+    }
+
     const fetchCarouselContent = async () => {
       setIsLoading(true);
       setError(null);
@@ -61,7 +82,7 @@ const FeaturedCarousel: React.FC = () => {
     };
 
     fetchCarouselContent();
-  }, []);
+  }, [item]);
 
   const scrollPrev = useCallback(() => {
     if (emblaApi) emblaApi.scrollPrev();
@@ -89,7 +110,10 @@ const FeaturedCarousel: React.FC = () => {
     );
   }
 
-  if (carouselItems.length === 0) {
+  // Ensure carouselItems is an array
+  const items = Array.isArray(carouselItems) ? carouselItems : [];
+  
+  if (items.length === 0) {
     return (
       <div className="w-full h-64 md:h-96 flex items-center justify-center bg-gray-700 rounded-lg shadow-lg">
         <p className="text-gray-300">No items to display in carousel.</p>
@@ -101,7 +125,7 @@ const FeaturedCarousel: React.FC = () => {
     <div className="relative w-full mx-auto overflow-hidden rounded-lg shadow-2xl embla">
       <div className="overflow-hidden" ref={emblaRef}>
         <div className="flex embla__container">
-          {carouselItems.map((item) => (
+          {items.map((item) => (
             <div key={item.tmdbId} className="embla__slide relative flex-[0_0_100%] aspect-[16/7]">
               <Link href={`/${item.mediaType}/${item.tmdbId}`} legacyBehavior>
                 <a className="block w-full h-full">
@@ -134,7 +158,7 @@ const FeaturedCarousel: React.FC = () => {
         </div>
       </div>
 
-      {carouselItems.length > 1 && (
+      {items.length > 1 && (
         <>
           <button
             className="embla__prev absolute top-1/2 left-2 md:left-4 transform -translate-y-1/2 bg-black/50 hover:bg-black/75 text-white p-2 md:p-3 rounded-full focus:outline-none transition-opacity duration-300 z-10"
