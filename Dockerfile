@@ -1,6 +1,16 @@
 # Build stage
 FROM node:18-alpine AS builder
 
+# Build arguments
+ARG PROWLARR_URL
+ARG PROWLARR_API_KEY
+ARG TMDB_API_KEY
+
+# Set environment variables
+ENV PROWLARR_URL=$PROWLARR_URL
+ENV PROWLARR_API_KEY=$PROWLARR_API_KEY
+ENV TMDB_API_KEY=$TMDB_API_KEY
+
 WORKDIR /app
 
 # Install build dependencies

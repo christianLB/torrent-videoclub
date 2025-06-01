@@ -41,3 +41,8 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            PROWLARR_URL=${{ secrets.PROWLARR_URL }}
+            PROWLARR_API_KEY=${{ secrets.PROWLARR_API_KEY }}
+            TMDB_API_KEY=${{ secrets.TMDB_API_KEY }}
+
