@@ -37,10 +37,6 @@ Create a `.env` file in the project root with the following variables:
 NODE_ENV=development
 NEXT_PUBLIC_APP_ENV=development
 
-# Redis
-REDIS_URL=redis://redis:6379
-REDIS_PASSWORD=your-secure-password
-
 # Prowlarr
 PROWLARR_URL=http://your-prowlarr-instance:9696
 PROWLARR_API_KEY=your-prowlarr-api-key

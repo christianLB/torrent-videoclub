@@ -30,8 +30,6 @@ const nextConfig = {
     PROWLARR_URL: process.env.PROWLARR_URL,
     PROWLARR_API_KEY: process.env.PROWLARR_API_KEY,
     TMDB_API_KEY: process.env.TMDB_API_KEY,
-    REDIS_URL: process.env.REDIS_URL,
-    REDIS_FEATURED_CONTENT_TTL: process.env.REDIS_FEATURED_CONTENT_TTL || '3600',
   },
   // Make sure environment variables are available at build time
   publicRuntimeConfig: {
@@ -43,8 +41,6 @@ const nextConfig = {
     prowlarrUrl: process.env.PROWLARR_URL,
     prowlarrApiKey: process.env.PROWLARR_API_KEY,
     tmdbApiKey: process.env.TMDB_API_KEY,
-    redisUrl: process.env.REDIS_URL,
-    redisFeaturedContentTTL: parseInt(process.env.REDIS_FEATURED_CONTENT_TTL || '3600', 10),
   },
   // Enable webpack to load .env files
   webpack: (config, { isServer }) => {

@@ -165,12 +165,6 @@ export default function AdminCachePage() {
           </p>
           
           <div className="space-y-4">
-            <div>
-              <h3 className="text-lg font-medium text-amber-300">Cache TTL Settings</h3>
-              <p className="text-sm text-gray-400">
-                Featured content is cached, typically for a duration specified by the REDIS_FEATURED_CONTENT_TTL environment variable (e.g., 24 hours).
-              </p>
-            </div>
             
             <div>
               <h3 className="text-lg font-medium text-amber-300">Automatic Cache Updates</h3>

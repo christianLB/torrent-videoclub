@@ -8,7 +8,6 @@
  */
 import { TMDbClient } from '../api/tmdb-client';
 import { TMDBMediaItem } from '../types/tmdb';
-import { redisService } from './server/redis-service';
 
 const TMDB_API_KEY = process.env.TMDB_API_KEY;
 
@@ -33,35 +32,25 @@ class TMDBDataService {
   async getOrFetchMediaItem(tmdbId: number, mediaType: 'movie' | 'tv'): Promise<TMDBMediaItem | null> {
     if (!TMDB_API_KEY) return null; // Do not proceed if API key is missing
 
-    // 1. Try to get from cache
-    const cachedItem = await redisService.getTMDBItem(tmdbId, mediaType);
-    if (cachedItem) {
-      console.log(`[TMDBDataService] Cache hit for ${mediaType} ID ${tmdbId}`);
-      return cachedItem;
-    }
-
-    console.log(`[TMDBDataService] Cache miss for ${mediaType} ID ${tmdbId}. Fetching from TMDb.`);
-
-    // 2. If not in cache, fetch from TMDb
+    // Fetch directly from TMDb
+    console.log(`[TMDBDataService] Fetching ${mediaType} ID ${tmdbId} directly from TMDb.`);
     let fetchedItem: TMDBMediaItem | null = null;
     try {
       if (mediaType === 'movie') {
         fetchedItem = await this.tmdbClient.getMovieDetails(tmdbId);
       } else if (mediaType === 'tv') {
-        fetchedItem = await this.tmdbClient.getTvShowDetails(tmdbId); // Corrected tvShowId to tmdbId
+        fetchedItem = await this.tmdbClient.getTvShowDetails(tmdbId);
       }
     } catch (error) {
       console.error(`[TMDBDataService] Error fetching ${mediaType} ID ${tmdbId} from TMDb:`, error);
-      return null;
+      return null; // Return null on error
     }
 
-    // 3. If fetched successfully, cache it
     if (fetchedItem) {
-      console.log(`[TMDBDataService] Fetched ${mediaType} ID ${tmdbId} from TMDb. Caching now.`);
-      await redisService.setTMDBItem(fetchedItem);
       return fetchedItem;
     }
 
+    // If not fetched (e.g., 404 from TMDb), warn and return null
     console.warn(`[TMDBDataService] Could not find ${mediaType} ID ${tmdbId} from TMDb.`);
     return null;
   }
@@ -75,48 +64,17 @@ class TMDBDataService {
   ): Promise<TMDBMediaItem[]> {
     if (!TMDB_API_KEY) return [];
 
-    // 1. Try to get list of IDs from cache
-    const cachedIdList = await redisService.getTMDBIdList(listCacheKey);
-
-    if (cachedIdList) {
-      console.log(`[TMDBDataService] Cache hit for ID list: ${listCacheKey}`);
-      const items: TMDBMediaItem[] = [];
-      for (const id of cachedIdList) {
-        const item = await this.getOrFetchMediaItem(id, mediaType);
-        if (item) {
-          items.push(item);
-        }
-      }
-      return items;
-    }
-
-    console.log(`[TMDBDataService] Cache miss for ID list: ${listCacheKey}. Fetching from TMDb.`);
-
-    // 2. If ID list not in cache, fetch full items from TMDb
+    // Fetch list directly from TMDb
+    console.log(`[TMDBDataService] Fetching list ${listCacheKey} directly from TMDb.`);
     let fetchedItems: TMDBMediaItem[] = [];
     try {
       fetchedItems = await fetchFunction();
     } catch (error) {
       console.error(`[TMDBDataService] Error fetching list ${listCacheKey} from TMDb:`, error);
-      return [];
+      return []; // Return empty array on error
     }
 
-    // 3. If fetched successfully, cache IDs and individual items
-    if (fetchedItems.length > 0) {
-      console.log(`[TMDBDataService] Fetched ${fetchedItems.length} items for ${listCacheKey}. Caching now.`);
-      const idsToCache = fetchedItems.map(item => item.tmdbId);
-      await redisService.setTMDBIdList(listCacheKey, idsToCache);
-      
-      // Cache each individual item (getOrFetchMediaItem would also do this, but batching here can be efficient)
-      for (const item of fetchedItems) {
-        // Check if item is already cached to avoid redundant set operations if getOrFetchMediaItem was somehow called prior
-        // This is a small optimization and might not be strictly necessary if setTMDBItem is idempotent and cheap.
-        const alreadyCached = await redisService.getTMDBItem(item.tmdbId, mediaType);
-        if (!alreadyCached) {
-           await redisService.setTMDBItem(item);
-        }
-      }
-    }
+    // No caching step, just return fetched items
     return fetchedItems;
   }
 

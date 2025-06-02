@@ -7,10 +7,6 @@ type ServerConfig = {
   tmdb: {
     apiKey: string;
   };
-  redis: {
-    url: string;
-    featuredContentTTL: number;
-  };
   features: {
     useRealData: boolean;
     useTMDb: boolean;
@@ -22,7 +18,6 @@ console.log('[Config] Loading server configuration from environment variables', 
   PROWLARR_URL: process.env.PROWLARR_URL ? 'SET' : 'NOT SET',
   PROWLARR_API_KEY: process.env.PROWLARR_API_KEY ? 'SET' : 'NOT SET',
   TMDB_API_KEY: process.env.TMDB_API_KEY ? 'SET' : 'NOT SET',
-  REDIS_URL: process.env.REDIS_URL || 'default: redis://localhost:6379'
 });
 
 export const serverConfig: ServerConfig = {
@@ -32,10 +27,6 @@ export const serverConfig: ServerConfig = {
   },
   tmdb: {
     apiKey: process.env.TMDB_API_KEY || '',
-  },
-  redis: {
-    url: process.env.REDIS_URL || 'redis://localhost:6379',
-    featuredContentTTL: parseInt(process.env.REDIS_FEATURED_CONTENT_TTL || '3600', 10),
   },
   features: {
     useRealData: !!(process.env.PROWLARR_URL && process.env.PROWLARR_API_KEY && process.env.TMDB_API_KEY),
@@ -83,4 +74,3 @@ const validateConfig = () => {
 // Run validation when the module loads
 validateConfig();
 
-export default serverConfig;

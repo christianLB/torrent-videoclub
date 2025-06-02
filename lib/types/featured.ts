@@ -11,14 +11,15 @@ export interface TMDbEnrichmentData {
   tmdbId?: number;        // TMDb ID for the movie or TV show
   title?: string;         // Title from TMDb
   year?: number;          // Release year from TMDb
-  posterPath?: string;    // Relative path from TMDb (e.g., /xyz.jpg)
-  backdropPath?: string;  // Relative path from TMDb
+  posterPath?: string | null;    // Relative path from TMDb (e.g., /xyz.jpg)
+  backdropPath?: string | null;  // Relative path from TMDb
   overview?: string;
   voteAverage?: number;
   genreIds?: number[];    // TMDb genre IDs
   releaseDate?: string;   // Full release date from TMDb
   runtime?: number;       // For movies, in minutes
   seasons?: number;       // For TV shows, number of seasons
+  firstAirDate?: string;  // For TV shows, the first air date
   // ... other relevant TMDb fields can be added here
 }
 
@@ -88,6 +89,6 @@ export interface FeaturedCategory {
 }
 
 export interface FeaturedContent {
-  featuredItem: FeaturedItem;
+  featuredItem: FeaturedItem | null; // Allow featuredItem to be null
   categories: FeaturedCategory[];
 }

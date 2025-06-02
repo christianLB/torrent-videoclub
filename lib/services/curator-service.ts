@@ -14,7 +14,7 @@ import {
   ProwlarrItemData, // Added import
   TMDbEnrichmentData // Added import
 } from '../types/featured';
-import { redisService } from './server/redis-service';
+import { CacheService } from './server/cache-service';
 import { TrendingContentClient } from './trending-content-client';
 import { serverConfig } from '../config';
 import { TMDbClient } from '../api/tmdb-client';
@@ -163,9 +163,11 @@ export class CuratorService {
    * Clear the cache for featured content
    */
   static async clearCache(): Promise<void> {
-    if (redisService && 'clearByPrefix' in redisService) {
-      // @ts-expect-error - Dynamic import checked that the method exists
-      await redisService.clearByPrefix('featured:');
+    try {
+      await CacheService.clearFeaturedContentCache();
+      console.log('[CuratorService] Featured content cache cleared via CacheService');
+    } catch (error) {
+      console.error('[CuratorService] Failed to clear cache via CacheService:', error);
     }
   }
 
@@ -424,36 +426,30 @@ export class CuratorService {
       return getMockFeaturedContent();
     }
 
-    const cacheKey = 'featured:content';
-    
     try {
-      // Try to get from cache first
-      try {
-        const cached = await redisService.get<FeaturedContent>(cacheKey);
-        if (cached) {
-          console.log('[CuratorService] Returning cached featured content');
-          return cached;
+      // Try to get from MongoDB cache first
+      const isCacheValid = await CacheService.isFeaturedContentCacheValid();
+      if (isCacheValid) {
+        const cachedContent = await CacheService.getCachedFeaturedContent();
+        if (cachedContent) {
+          console.log('[CuratorService] Returning valid featured content from MongoDB cache');
+          return cachedContent;
         }
-      } catch (redisError: unknown) {
-        console.warn('[CuratorService] Redis error, will fetch fresh data:', redisError instanceof Error ? redisError.message : String(redisError));
-        // Continue execution to fetch fresh data
+        console.log('[CuratorService] Cache was reported valid, but no content retrieved. Fetching fresh.');
+      } else {
+        console.log('[CuratorService] MongoDB cache invalid or not found, fetching fresh content');
       }
-      
-      // If not in cache, fetch fresh
-      console.log('[CuratorService] No cached data found, fetching fresh content');
+
+      // If not in cache or cache invalid, fetch fresh
       const freshContent = await this.fetchFreshFeaturedContent();
       
-      // Try to cache the result
+      // Cache the fresh content in MongoDB
       try {
-        const ttl = process.env.REDIS_FEATURED_CONTENT_TTL 
-          ? parseInt(process.env.REDIS_FEATURED_CONTENT_TTL) 
-          : 3600; // 1 hour default
-
-        await redisService.set(cacheKey, freshContent, ttl);
-        console.log(`[CuratorService] Cached fresh content with TTL ${ttl}s`);
-      } catch (redisError: unknown) {
+        await CacheService.cacheFeaturedContent(freshContent);
+        console.log('[CuratorService] Cached fresh featured content in MongoDB');
+      } catch (mongoCacheError: unknown) {
         // Just log the error but continue with fresh data
-        console.warn('[CuratorService] Failed to cache content, but continuing with fresh data:', redisError instanceof Error ? redisError.message : String(redisError));
+        console.warn('[CuratorService] Failed to cache content in MongoDB, but continuing with fresh data:', mongoCacheError instanceof Error ? mongoCacheError.message : String(mongoCacheError));
       }
       
       return freshContent;

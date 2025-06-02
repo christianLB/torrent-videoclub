@@ -9,10 +9,6 @@ services:
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
       
-      # Redis configuration
-      - REDIS_URL=redis://redis:6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-your-redis-password}
-      
       # API credentials - these should be set in a .env file
       - PROWLARR_URL=${PROWLARR_URL:-http://prowlarr:9696}
       - PROWLARR_API_KEY=${PROWLARR_API_KEY:-your-prowlarr-api-key}
@@ -27,20 +23,23 @@ services:
     ports:
       - "3000:3000"
     restart: unless-stopped
-    depends_on:
-      redis:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "node", "scripts/healthcheck.js"]
       interval: 30s
       timeout: 10s
       retries: 3
     
-  redis:
-    image: redis:7-alpine
-    command: redis-server --appendonly yes
+  mongo:
+    image: mongo:latest
+    container_name: mongo
+    environment:
+      MONGODB_DATABASE: torrentVideoclub
+      MONGODB_USER: torrentVideoclub
+      MONGODB_PASSWORD: torrentVideoclub
+    ports:
+      - "27017:27017"
     volumes:
-      - redis-data:/data
+      - mongo-data:/data/db
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
