@@ -8,13 +8,11 @@ services:
     environment:
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
-      
-      # API credentials - these should be set in a .env file
+
       - PROWLARR_URL=${PROWLARR_URL:-http://prowlarr:9696}
       - PROWLARR_API_KEY=${PROWLARR_API_KEY:-your-prowlarr-api-key}
       - TMDB_API_KEY=${TMDB_API_KEY:-your-tmdb-api-key}
-      
-      # Other API credentials (optional)
+
       - RADARR_URL=${RADARR_URL:-}
       - RADARR_API_KEY=${RADARR_API_KEY:-}
       - SONARR_URL=${SONARR_URL:-}
@@ -23,32 +21,27 @@ services:
     ports:
       - "3000:3000"
     restart: unless-stopped
+    depends_on:
+      - mongo
     healthcheck:
       test: ["CMD", "node", "scripts/healthcheck.js"]
       interval: 30s
       timeout: 10s
       retries: 3
-    
+
   mongo:
     image: mongo:latest
     container_name: mongo
-    environment:
-      MONGODB_DATABASE: torrentVideoclub
-      MONGODB_USER: torrentVideoclub
-      MONGODB_PASSWORD: torrentVideoclub
     ports:
       - "27017:27017"
     volumes:
       - mongo-data:/data/db
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
       retries: 5
-    ports:
-      - "6379:6379"
     restart: unless-stopped
 
 volumes:
-  redis-data:
-    driver: local
+  mongo-data:
