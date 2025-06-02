@@ -46,4 +46,5 @@ jobs:
             PROWLARR_URL=${{ secrets.PROWLARR_URL }}
             PROWLARR_API_KEY=${{ secrets.PROWLARR_API_KEY }}
             TMDB_API_KEY=${{ secrets.TMDB_API_KEY }}
+            MONGODB_URI=${{ secrets.MONGODB_URI }}
 
