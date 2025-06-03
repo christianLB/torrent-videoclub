@@ -100,6 +100,7 @@ const MediaCard: React.FC<MediaCardProps> = ({ item, onAddToLibrary, inLibrary, 
               sizes="(max-width: 768px) 30vw, 180px" /* Optimize rendering sizes */
               priority={false} /* Enable lazy loading */
               loading="lazy"
+              unoptimized={true} // Bypass Next.js image optimization
               onLoad={() => setImageLoaded(true)}
               style={{ objectFit: 'cover' }}
               className={`group-hover:opacity-80 transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
