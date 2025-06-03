@@ -31,16 +31,17 @@ export function getMockFeaturedContent(): FeaturedContent {
         tmdbId: 693134,
         title: 'Dune: Part Two',
         overview: 'Paul Atreides unites with Chani and the Fremen while seeking revenge against the conspirators who destroyed his family.',
-        backdropPath: '/api/placeholder/1920/1080',
-        posterPath: '/api/placeholder/500/750',
+        backdropPath: 'https://placehold.co/1280x720.png?text=Dune+Part+Two&font=roboto',
+        posterPath: 'https://placehold.co/500x750.png?text=Dune+Part+Two&font=roboto',
         voteAverage: 8.5,
         year: 2024,
         releaseDate: '2024-03-01',
         runtime: 166
       },
       displayTitle: 'Dune: Part Two (2024)',
-      fullPosterPath: 'https://image.tmdb.org/t/p/w500/api/placeholder/500/750',
-      fullBackdropPath: 'https://image.tmdb.org/t/p/original/api/placeholder/1920/1080'
+      // These full paths should ideally be constructed by components, but updating for mock consistency
+      fullPosterPath: 'https://placehold.co/500x750.png?text=Dune+Part+Two&font=roboto',
+      fullBackdropPath: 'https://placehold.co/1280x720.png?text=Dune+Part+Two&font=roboto'
     },
     categories: [
       {
@@ -92,8 +93,8 @@ function generateMockMovies(count: number, type: string): FeaturedItem[] {
       tmdbId: tmdbId,
       title: movie.title,
       overview: `An exciting ${type} movie that captivates audiences worldwide.`,
-      backdropPath: '/api/placeholder/1920/1080',
-      posterPath: '/api/placeholder/500/750',
+      backdropPath: `https://placehold.co/1280x720.png?text=${encodeURIComponent(movie.title)}&font=roboto`,
+      posterPath: `https://placehold.co/500x750.png?text=${encodeURIComponent(movie.title)}&font=roboto`,
       voteAverage: movie.rating,
       year: movie.year,
       releaseDate: `${movie.year}-01-01`,
@@ -118,8 +119,8 @@ function generateMockMovies(count: number, type: string): FeaturedItem[] {
       isDownloading: Math.random() > 0.9,
       tmdbInfo: tmdbInfo,
       displayTitle: `${movie.title} (${movie.year})`,
-      fullPosterPath: `https://image.tmdb.org/t/p/w500/api/placeholder/500/750`,
-      fullBackdropPath: `https://image.tmdb.org/t/p/original/api/placeholder/1920/1080`
+      fullPosterPath: `https://placehold.co/500x750.png?text=${encodeURIComponent(movie.title)}&font=roboto`,
+      fullBackdropPath: `https://placehold.co/1280x720.png?text=${encodeURIComponent(movie.title)}&font=roboto`
     };
   });
 }
@@ -144,8 +145,8 @@ function generateMockTVShows(count: number, type: string): FeaturedItem[] {
       tmdbId: tmdbId,
       title: show.title,
       overview: `A compelling ${type} TV series that keeps viewers on the edge of their seats.`,
-      backdropPath: '/api/placeholder/1920/1080',
-      posterPath: '/api/placeholder/500/750',
+      backdropPath: `https://placehold.co/1280x720.png?text=${encodeURIComponent(show.title)}&font=roboto`,
+      posterPath: `https://placehold.co/500x750.png?text=${encodeURIComponent(show.title)}&font=roboto`,
       voteAverage: show.rating,
       year: show.year,
       releaseDate: `${show.year}-01-01`,
@@ -170,8 +171,8 @@ function generateMockTVShows(count: number, type: string): FeaturedItem[] {
       isDownloading: Math.random() > 0.9,
       tmdbInfo: tmdbInfo,
       displayTitle: `${show.title} (${show.year})`,
-      fullPosterPath: `https://image.tmdb.org/t/p/w500/api/placeholder/500/750`,
-      fullBackdropPath: `https://image.tmdb.org/t/p/original/api/placeholder/1920/1080`
+      fullPosterPath: `https://placehold.co/500x750.png?text=${encodeURIComponent(show.title)}&font=roboto`,
+      fullBackdropPath: `https://placehold.co/1280x720.png?text=${encodeURIComponent(show.title)}&font=roboto`
     };
   });
 }
@@ -196,8 +197,8 @@ function generateMockDocumentaries(count: number): FeaturedItem[] {
       tmdbId: tmdbId,
       title: doc.title,
       overview: 'An eye-opening documentary that explores important topics and changes perspectives.',
-      backdropPath: '/api/placeholder/1920/1080',
-      posterPath: '/api/placeholder/500/750',
+      backdropPath: `https://placehold.co/1280x720.png?text=${encodeURIComponent(doc.title)}&font=roboto`,
+      posterPath: `https://placehold.co/500x750.png?text=${encodeURIComponent(doc.title)}&font=roboto`,
       voteAverage: doc.rating,
       year: doc.year,
       releaseDate: `${doc.year}-01-01`,
@@ -222,8 +223,8 @@ function generateMockDocumentaries(count: number): FeaturedItem[] {
       isDownloading: Math.random() > 0.95,
       tmdbInfo: tmdbInfo,
       displayTitle: `${doc.title} (${doc.year})`,
-      fullPosterPath: `https://image.tmdb.org/t/p/w500/api/placeholder/500/750`,
-      fullBackdropPath: `https://image.tmdb.org/t/p/original/api/placeholder/1920/1080`
+      fullPosterPath: `https://placehold.co/500x750.png?text=${encodeURIComponent(doc.title)}&font=roboto`,
+      fullBackdropPath: `https://placehold.co/1280x720.png?text=${encodeURIComponent(doc.title)}&font=roboto`
     };
   });
 }

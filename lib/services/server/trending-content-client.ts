@@ -1,4 +1,3 @@
-'use server';
 
 /**
  * Trending Content Client
@@ -10,10 +9,14 @@
  */
 
 // Import server-only package to enforce build-time errors when imported in client components
-import 'server-only';
+
+// import 'server-only';
 
 import { FeaturedItem } from '../../types/featured';
-import { ProwlarrClient } from './prowlarr-client';
+import { ProwlarrClient } from '../prowlarr-client';
+import { MoviesService } from './trending-content/movies-service';
+import { TvService } from './trending-content/tv-service';
+import { isAdultContent } from './trending-content/shared';
 
 export interface TrendingOptions {
   limit?: number;
@@ -25,6 +28,8 @@ export interface TrendingOptions {
 
 export class TrendingContentClient {
   private prowlarrClient: ProwlarrClient;
+  private moviesService: MoviesService;
+  private tvService: TvService;
   
   /**
    * Constructor can accept either:
@@ -49,6 +54,8 @@ export class TrendingContentClient {
       console.error('[TrendingContentClient] Invalid constructor arguments:', typeof prowlarrClientOrUrl);
       throw new Error('Invalid constructor arguments for TrendingContentClient');
     }
+    this.moviesService = new MoviesService(this.prowlarrClient);
+    this.tvService = new TvService(this.prowlarrClient);
   }
 
   /**
@@ -56,34 +63,7 @@ export class TrendingContentClient {
    * Searches for popular, high-quality movie torrents with good seeder counts
    */
   async getTrendingMovies(options: TrendingOptions = {}): Promise<FeaturedItem[]> {
-    console.log('[TrendingContentClient] Fetching trending movies with options:', options);
-    console.log('[TrendingContentClient] Using prowlarrClient:', !!this.prowlarrClient);
-    
-    try {
-      // Search for trending movies - use a wildcard query to ensure we get results
-      const results = await this.prowlarrClient.search({
-        query: '*', // Wildcard query to match everything
-        type: 'movie',
-        minSeeders: options.minSeeders || 5, // Reduced minimum seeders to get more results
-        limit: options.limit || 20
-      });
-      
-      console.log(`[TrendingContentClient] Raw search returned ${results.length} movie results`);
-      
-      // Convert to FeaturedItems
-      const featuredItems = results.map(result => this.prowlarrClient.convertToFeaturedItem(result));
-      
-      // Filter out adult content if requested
-      const filteredItems = options.excludeAdult 
-        ? featuredItems.filter(item => !this.isAdultContent(item.title))
-        : featuredItems;
-      
-      console.log(`[TrendingContentClient] Found ${filteredItems.length} trending movies`);
-      return filteredItems;
-    } catch (error) {
-      console.error('[TrendingContentClient] Error fetching trending movies:', error);
-      return [];
-    }
+    return this.moviesService.getTrendingMovies(options);
   }
 
   /**
@@ -91,33 +71,7 @@ export class TrendingContentClient {
    * Searches for popular TV shows with good seeder counts
    */
   async getPopularTV(options: TrendingOptions = {}): Promise<FeaturedItem[]> {
-    console.log('[TrendingContentClient] Fetching popular TV shows with options:', options);
-    
-    try {
-      // Search for popular TV shows with wildcard query
-      const results = await this.prowlarrClient.search({
-        query: '*', // Wildcard query to match everything
-        type: 'tv',
-        minSeeders: options.minSeeders || 5, // Reduced minimum seeders to get more results
-        limit: options.limit || 20
-      });
-      
-      console.log(`[TrendingContentClient] Raw search returned ${results.length} TV show results`);
-      
-      // Convert to FeaturedItems
-      const featuredItems = results.map(result => this.prowlarrClient.convertToFeaturedItem(result));
-      
-      // Filter out adult content if requested
-      const filteredItems = options.excludeAdult 
-        ? featuredItems.filter(item => !this.isAdultContent(item.title))
-        : featuredItems;
-      
-      console.log(`[TrendingContentClient] Found ${filteredItems.length} popular TV shows`);
-      return filteredItems;
-    } catch (error) {
-      console.error('[TrendingContentClient] Error fetching popular TV shows:', error);
-      return [];
-    }
+    return this.tvService.getPopularTV(options);
   }
 
   /**
@@ -142,20 +96,20 @@ export class TrendingContentClient {
       console.log(`[TrendingContentClient] Raw search returned ${results.length} new release results`);
       
       // Convert to FeaturedItems
-      const featuredItems = results.map(result => this.prowlarrClient.convertToFeaturedItem(result));
+      const featuredItems = results.map((result: any) => this.prowlarrClient.convertToFeaturedItem(result));
       
       // Filter by release date if possible (looking at publishDate)
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
       
-      const recentItems = featuredItems.filter(item => {
+      const recentItems = featuredItems.filter((item: any) => {
         const publishDate = new Date(item.publishDate as string);
         return !isNaN(publishDate.getTime()) && publishDate >= cutoffDate;
       });
       
       // Filter out adult content if requested
       const filteredItems = options.excludeAdult 
-        ? recentItems.filter(item => !this.isAdultContent(item.title))
+        ? recentItems.filter((item: any) => !this.isAdultContent(item.title))
         : recentItems;
       
       console.log(`[TrendingContentClient] Found ${filteredItems.length} new releases`);
@@ -171,33 +125,7 @@ export class TrendingContentClient {
    * Searches specifically for 4K/2160p content
    */
   async get4KContent(options: TrendingOptions = {}): Promise<FeaturedItem[]> {
-    console.log('[TrendingContentClient] Fetching 4K content with options:', options);
-    
-    try {
-      // Search for 4K content (movies and TV shows in 4K)
-      // Use a more comprehensive query with alternative spellings and wildcards
-      const results = await this.prowlarrClient.search({
-        query: '4K OR 2160p OR UHD OR "Ultra HD"', // Enhanced search for 4K keywords
-        minSeeders: options.minSeeders || 3, // Lower minimum seeders to get more results
-        limit: options.limit || 20
-      });
-      
-      console.log(`[TrendingContentClient] Raw search returned ${results.length} 4K content results`);
-      
-      // Convert to FeaturedItems
-      const featuredItems = results.map(result => this.prowlarrClient.convertToFeaturedItem(result));
-      
-      // Filter out adult content if requested
-      const filteredItems = options.excludeAdult 
-        ? featuredItems.filter(item => !this.isAdultContent(item.title))
-        : featuredItems;
-      
-      console.log(`[TrendingContentClient] Found ${filteredItems.length} 4K content items`);
-      return filteredItems;
-    } catch (error) {
-      console.error('[TrendingContentClient] Error fetching 4K content:', error);
-      return [];
-    }
+    return this.moviesService.get4KContent(options);
   }
 
   /**
@@ -225,7 +153,7 @@ export class TrendingContentClient {
           const categoryName = typeof cat === 'object' && cat !== null && 'name' in cat 
             ? String(cat.name) 
             : String(cat);
-
+        
           return categoryName.toLowerCase().includes('tv') || 
                  categoryName.toLowerCase().includes('series') ||
                  categoryName.toLowerCase().includes('show');
@@ -251,18 +179,12 @@ export class TrendingContentClient {
       return [];
     }
   }
-  
+
   /**
    * Check if content title appears to be adult content
    * Basic filter to exclude adult content from results
    */
   private isAdultContent(title: string): boolean {
-    const adultKeywords = [
-      'xxx', 'porn', 'adult', 'sex', 'erotic', 'nude', 'naked', 
-      'hentai', 'brazzers', 'playboy', 'penthouse'
-    ];
-    
-    const lowerTitle = title.toLowerCase();
-    return adultKeywords.some(keyword => lowerTitle.includes(keyword));
+    return isAdultContent(title);
   }
 }

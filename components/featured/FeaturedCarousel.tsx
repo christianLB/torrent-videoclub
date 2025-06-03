@@ -129,27 +129,47 @@ const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({ item }) => {
             <div key={item.tmdbId} className="embla__slide relative flex-[0_0_100%] aspect-[16/7]">
               <Link href={`/${item.mediaType}/${item.tmdbId}`} legacyBehavior>
                 <a className="block w-full h-full">
-                  {item.backdropPath ? (
-                    <Image
-                      src={`${TMDB_IMAGE_BASE_URL}w1280${item.backdropPath}`}
-                      alt={item.title ?? 'Carousel item backdrop'}
-                      fill
-                      style={{ objectFit: 'cover', objectPosition: 'center' }}
-                      className="transition-transform duration-300 ease-in-out group-hover:scale-105"
-                      unoptimized={true} // Using unoptimized for now as TMDB is an external domain and might need config
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gray-700 flex items-center justify-center">
-                      <p className="text-white text-xl">{item.title || (item.mediaType === 'movie' ? 'Untitled Movie' : 'Untitled TV Show')}</p>
-                    </div>
-                  )}
+                  {(() => {
+                    let imageUrl = '';
+                    if (item.backdropPath) {
+                      if (item.backdropPath.startsWith('http')) {
+                        imageUrl = item.backdropPath;
+                      } else {
+                        const cleanBackdropPath = item.backdropPath.startsWith('/') ? item.backdropPath : `/${item.backdropPath}`;
+                        imageUrl = `${TMDB_IMAGE_BASE_URL}w1280${cleanBackdropPath}`;
+                      }
+                    } else if (item.posterPath) { // Fallback to posterPath
+                      if (item.posterPath.startsWith('http')) {
+                        imageUrl = item.posterPath;
+                      } else {
+                        const cleanPosterPath = item.posterPath.startsWith('/') ? item.posterPath : `/${item.posterPath}`;
+                        imageUrl = `${TMDB_IMAGE_BASE_URL}w780${cleanPosterPath}`; // Using w780 for poster fallback
+                      }
+                    }
+
+                    return imageUrl ? (
+                      <Image
+                        src={imageUrl}
+                        alt={item.title ?? 'Carousel item image'}
+                        fill
+                        style={{ objectFit: 'cover', objectPosition: 'center' }}
+                        className="transition-transform duration-300 ease-in-out group-hover:scale-105"
+                        unoptimized={true}
+                      />
+                    ) : (
+                      // Original fallback if no backdropPath or posterPath
+                      <div className="w-full h-full bg-gray-700 flex items-center justify-center">
+                        <p className="text-white text-xl">{item.title || (item.mediaType === 'movie' ? 'Untitled Movie' : 'Untitled TV Show')}</p>
+                      </div>
+                    );
+                  })()}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent p-4 md:p-8 flex flex-col justify-end">
                     <h3 className="text-white text-xl md:text-3xl lg:text-4xl font-bold drop-shadow-lg">
                       {item.title || (item.mediaType === 'movie' ? 'Untitled Movie' : 'Untitled TV Show')}
                     </h3>
                     <p className="text-gray-300 text-xs md:text-sm mt-1 md:mt-2 line-clamp-2 md:line-clamp-3 drop-shadow-md">
-                        {item.overview || 'Overview not available.'}
-                      </p>
+                      {item.overview || 'Overview not available.'}
+                    </p>
                   </div>
                 </a>
               </Link>
