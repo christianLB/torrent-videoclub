@@ -1,3 +1,13 @@
+const maskApiKey = (apiKey: string | undefined): string => {
+  if (!apiKey) {
+    return 'NOT SET';
+  }
+  if (apiKey.length <= 4) {
+    return `SET (val: ${apiKey})`;
+  }
+  return `SET (ends with: ${apiKey.slice(-4)})`;
+};
+
 // Server-side configuration
 type ServerConfig = {
   prowlarr: {
@@ -16,8 +26,8 @@ type ServerConfig = {
 // Debug environment variables
 console.log('[Config] Loading server configuration from environment variables', {
   PROWLARR_URL: process.env.PROWLARR_URL ? 'SET' : 'NOT SET',
-  PROWLARR_API_KEY: process.env.PROWLARR_API_KEY ? 'SET' : 'NOT SET',
-  TMDB_API_KEY: process.env.TMDB_API_KEY ? 'SET' : 'NOT SET',
+  PROWLARR_API_KEY: maskApiKey(process.env.PROWLARR_API_KEY),
+  TMDB_API_KEY: maskApiKey(process.env.TMDB_API_KEY),
 });
 
 export const serverConfig: ServerConfig = {
@@ -37,8 +47,8 @@ export const serverConfig: ServerConfig = {
 // Debug the computed config
 console.log('[Config] Server configuration loaded:', {
   'prowlarr.url': serverConfig.prowlarr.url ? 'SET' : 'NOT SET',
-  'prowlarr.apiKey': serverConfig.prowlarr.apiKey ? 'SET' : 'NOT SET',
-  'tmdb.apiKey': serverConfig.tmdb.apiKey ? 'SET' : 'NOT SET',
+  'prowlarr.apiKey': maskApiKey(serverConfig.prowlarr.apiKey),
+  'tmdb.apiKey': maskApiKey(serverConfig.tmdb.apiKey),
   'features.useRealData': serverConfig.features.useRealData,
   'features.useTMDb': serverConfig.features.useTMDb
 });
@@ -67,7 +77,7 @@ const validateConfig = () => {
   } else {
     console.log('✅ All required environment variables are set');
     console.log(`🌐 Prowlarr URL: ${serverConfig.prowlarr.url ? 'Configured' : 'Not configured'}`);
-    console.log(`🔑 TMDb API: ${serverConfig.tmdb.apiKey ? 'Configured' : 'Not configured'}`);
+    console.log(`🔑 TMDb API: ${maskApiKey(serverConfig.tmdb.apiKey)}`);
   }
 };
 

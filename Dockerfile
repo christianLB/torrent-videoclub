@@ -16,7 +16,7 @@ ENV MONGODB_URI=$MONGODB_URI
 WORKDIR /app
 
 # Install build dependencies
-RUN apk add --no-cache git python3 make g++
+# RUN apk add --no-cache git python3 make g++ # Confirmed not needed by build test
 
 # Copy package files
 COPY package.json package-lock.json* ./
@@ -35,18 +35,31 @@ FROM node:18-alpine
 
 WORKDIR /app
 
+# Build arguments needed at runtime
+ARG PROWLARR_URL
+ARG PROWLARR_API_KEY
+ARG TMDB_API_KEY
+ARG MONGODB_URI
+
+# Set environment variables for runtime
+ENV PROWLARR_URL=$PROWLARR_URL
+ENV PROWLARR_API_KEY=$PROWLARR_API_KEY
+ENV TMDB_API_KEY=$TMDB_API_KEY
+ENV MONGODB_URI=$MONGODB_URI
+
 # Install runtime dependencies
 RUN apk add --no-cache tini
 
-# Copy built application from builder
+# Copy package files first
 COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/scripts ./scripts
 
 # Install only production dependencies
 RUN npm ci --only=production
+
+# Copy built application from builder (excluding node_modules, as they are now installed)
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/scripts ./scripts
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \

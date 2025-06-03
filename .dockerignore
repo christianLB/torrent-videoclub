@@ -1,0 +1,38 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Node
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.tsbuildinfo
+
+# Next.js - local build artifacts (the Docker build will create its own)
+.next
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE / Editor
+.vscode
+.idea
+
+# Secrets / Environment (should be passed via build args/runtime env vars)
+.env
+.env*.local
+.env.*.local
+
+# Other
+*.log
+*.md
+# Add any other project-specific files/folders that are not needed for the build
+# e.g., /docs, /tests (if not needed for build steps), /coverage
