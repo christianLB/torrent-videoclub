@@ -1,5 +1,10 @@
-/*
-process.env.MONGODB_URI = 'mongodb://mock-uri-for-tests';
+
+// vi.hoisted must be at the very top
+const { __MONGODB_URI_SET__ } = vi.hoisted(() => {
+  process.env.MONGODB_URI = 'mongodb://mock-uri-for-tests-via-hoisted';
+  return { __MONGODB_URI_SET__: true }; // Ensure the factory runs
+});
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CuratorService } from '../../../../lib/services/curator-service';
 import { FeaturedContent } from '../../../../lib/types/featured';
@@ -43,18 +48,13 @@ describe('/api/featured route', () => {
       protocol: 'torrent',
       mediaType: 'movie',
       title: 'Featured Movie',
-      year: 2025, // This field is not directly in FeaturedItem, but tmdbInfo.year or displayYear
       quality: '4K',
-      format: 'WEBDL', // This field is not in FeaturedItem or ProwlarrItemData
-      codec: 'x265', // This field is not in FeaturedItem or ProwlarrItemData
       size: 20000000000,
-      sizeFormatted: '18.62 GB', // This is a display field, not part of core FeaturedItem
       // indexer: 'test-indexer', // Replaced by indexerId
       seeders: 50,
       leechers: 10,
-      tmdbAvailable: true, // This is likely a derived/display field, not in core FeaturedItem
       inLibrary: false,
-      downloading: false,
+      isDownloading: false,
       tmdbInfo: {
         tmdbId: 12345,
         title: 'Featured Movie',
@@ -78,18 +78,13 @@ describe('/api/featured route', () => {
             protocol: 'torrent',
             mediaType: 'movie',
             title: 'Trending Movie 1',
-            year: 2025,
             quality: '1080p',
-            format: 'BluRay',
-            codec: 'x264',
             size: 8000000000,
-            sizeFormatted: '7.45 GB',
             // indexer: 'test-indexer',
             seeders: 30,
             leechers: 5,
-            tmdbAvailable: true,
             inLibrary: true,
-            downloading: false,
+            isDownloading: false,
             tmdbInfo: {
               tmdbId: 12346,
               title: 'Trending Movie 1',
@@ -108,18 +103,13 @@ describe('/api/featured route', () => {
             protocol: 'torrent',
             mediaType: 'movie',
             title: 'Trending Movie 2',
-            year: 2024,
             quality: '2160p',
-            format: 'BluRay',
-            codec: 'x265',
             size: 15000000000,
-            sizeFormatted: '13.97 GB',
             // indexer: 'test-indexer',
             seeders: 45,
             leechers: 8,
-            tmdbAvailable: true,
             inLibrary: false,
-            downloading: true,
+            isDownloading: true,
             downloadProgress: 75,
             tmdbInfo: {
               tmdbId: 12347,
@@ -161,7 +151,7 @@ describe('/api/featured route', () => {
     // Check featured item properties
     expect(data.featuredItem).toHaveProperty('title', 'Featured Movie');
     expect(data.featuredItem).toHaveProperty('inLibrary', false);
-    expect(data.featuredItem).toHaveProperty('downloading', false);
+    expect(data.featuredItem).toHaveProperty('isDownloading', false);
     
     // Check categories
     expect(data.categories).toHaveLength(1);
@@ -170,7 +160,7 @@ describe('/api/featured route', () => {
     
     // Check library status indicators
     expect(data.categories[0].items[0].inLibrary).toBe(true);
-    expect(data.categories[0].items[1].downloading).toBe(true);
+    expect(data.categories[0].items[1].isDownloading).toBe(true);
     expect(data.categories[0].items[1].downloadProgress).toBe(75);
   });
 
@@ -193,4 +183,3 @@ describe('/api/featured route', () => {
     expect(data).toEqual({ error: 'Failed to fetch featured content' });
   });
 });
-*/
