@@ -50,16 +50,15 @@ ENV MONGODB_URI=$MONGODB_URI
 # Install runtime dependencies
 RUN apk add --no-cache tini
 
-# Copy package files first
+# Copy built application from builder
 COPY --from=builder /app/package*.json ./
-
-# Install only production dependencies
-RUN npm ci --only=production
-
-# Copy built application from builder (excluding node_modules, as they are now installed)
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/scripts ./scripts
+
+# Install only production dependencies (prunes devDependencies from copied node_modules)
+RUN npm ci --only=production
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
