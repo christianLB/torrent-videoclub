@@ -15,7 +15,7 @@ interface CacheRefreshResult {
 }
 
 /**
- * Hook for refreshing Redis caches via API
+ * Hook for refreshing application caches via API
  * 
  * This client-side hook provides methods to refresh specific caches or all caches.
  * It uses the /api/cache API endpoint to perform these operations server-side.

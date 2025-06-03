@@ -1,8 +1,8 @@
 /**
  * Cache Scheduler Service
  * 
- * This service uses node-cron to schedule automatic cache refreshes,
- * ensuring Redis is always populated with fresh data.
+ * This service is responsible for scheduling background tasks that update the cache,
+ * ensuring the cache is always populated with fresh data.
  *
  * MUST only be used in server-side contexts.
  */
@@ -10,7 +10,6 @@
 // Import server-only package to enforce build-time errors when imported in client components
 
 import { tmdbDataService } from '../tmdb-data-service';
-import { cacheService } from './cache-service'; // Added cacheService import
 
 // We'll use dynamic import for node-cron since it's a Node.js module
 // and we want to avoid issues with client-side rendering
@@ -97,11 +96,7 @@ export class CacheSchedulerService {
         { name: 'Trending Movies Weekly (Page 1)', task: () => tmdbDataService.getOrFetchTrendingMovies('week', 1) },
         { name: 'Popular TV Shows (Page 1)', task: () => tmdbDataService.getOrFetchPopularTvShows(1) },
         { name: 'Trending TV Shows Weekly (Page 1)', task: () => tmdbDataService.getOrFetchTrendingTvShows('week', 1) },
-        // Clear featured content cache to force refresh on next request
-        { name: 'Featured Content Cache', task: async () => {
-          //await cacheService.clearFeaturedContentCache();
-          return [];
-        } }
+
       ];
 
       console.log(`[CacheScheduler] Refreshing ${refreshTasks.length} content categories...`);

@@ -1,8 +1,8 @@
 /**
  * API route for retrieving category data
  * 
- * This endpoint serves as a server-side interface to the CuratorService,
- * preventing direct client-side imports of Redis-dependent code.
+ * This API route is designed to be called from the client-side for fetching specific categories,
+ * preventing direct client-side imports of server-side cache-dependent code.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { CuratorService } from '@/lib/services/curator-service';

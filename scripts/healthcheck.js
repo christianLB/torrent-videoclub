@@ -1,5 +1,4 @@
 const http = require('http');
-const Redis = require('ioredis');
 
 const options = {
   hostname: 'localhost',

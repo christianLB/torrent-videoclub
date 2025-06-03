@@ -12,7 +12,7 @@ The Torrent VideoClub project uses Vitest for testing with the following configu
 ### Test Structure
 - **Main Test Directories**:
   - `/test`: Contains app and lib unit tests
-  - `/tests`: Contains some isolated tests (redis-cache.test.ts)
+  - `/tests`: May contain isolated utility or service tests.
   - Component tests should be placed in `__tests__` folders adjacent to components
 
 ### Running Tests
@@ -59,7 +59,7 @@ The Torrent VideoClub project uses Vitest for testing with the following configu
 - Verify Prowlarr client search parameters
 - Ensure proper data transformation
 - Test TMDb data enrichment
-- Verify Redis caching behavior
+- Verify application caching behavior (MongoDB-based)
 - Test error handling for API failures
 
 This document serves as a guide for maintaining consistent testing practices for the Torrent VideoClub application.

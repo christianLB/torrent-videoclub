@@ -4,7 +4,7 @@
 //  * Server-Side TMDB Data Service with Caching
 //  *
 //  * This service orchestrates fetching data from TMDb (via TMDbClient)
-//  * and caching it using RedisService. It implements a cache-aside strategy.
+
 //  * 
 //  * MUST only be used in server-side contexts.
 //  */
@@ -39,7 +39,7 @@
 //     if (!TMDB_API_KEY) return null; // Do not proceed if API key is missing
 
 //     // 1. Try to get from cache
-//     //const cachedItem = await redisService.getTMDBItem(tmdbId, mediaType);
+// 
 //     //if (cachedItem) {
 //     //  console.log(`[TMDBDataService] Cache hit for ${mediaType} ID ${tmdbId}`);
 //     //  return cachedItem;
@@ -63,7 +63,7 @@
 //     // 3. If fetched successfully, cache it
 //     if (fetchedItem) {
 //       console.log(`[TMDBDataService] Fetched ${mediaType} ID ${tmdbId} from TMDb. Caching now.`);
-//       //await redisService.setTMDBItem(fetchedItem);
+// 
 //       return fetchedItem;
 //     }
 
@@ -81,7 +81,7 @@
 //     if (!TMDB_API_KEY) return [];
 
 //     // 1. Try to get list of IDs from cache
-//     //const cachedIdList = await redisService.getTMDBIdList(listCacheKey);
+// 
 
 //     //if (cachedIdList) {
 //     //  console.log(`[TMDBDataService] Cache hit for ID list: ${listCacheKey}`);
@@ -110,15 +110,15 @@
 //     if (fetchedItems.length > 0) {
 //       console.log(`[TMDBDataService] Fetched ${fetchedItems.length} items for ${listCacheKey}. Caching now.`);
 //       const idsToCache = fetchedItems.map(item => item.tmdbId);
-//       await redisService.setTMDBIdList(listCacheKey, idsToCache);
+// 
       
 //       // Cache each individual item (getOrFetchMediaItem would also do this, but batching here can be efficient)
 //       for (const item of fetchedItems) {
 //         // Check if item is already cached to avoid redundant set operations if getOrFetchMediaItem was somehow called prior
 //         // This is a small optimization and might not be strictly necessary if setTMDBItem is idempotent and cheap.
-//         const alreadyCached = await redisService.getTMDBItem(item.tmdbId, mediaType);
+// 
 //         if (!alreadyCached) {
-//            await redisService.setTMDBItem(item);
+// 
 //         }
 //       }
 //     }

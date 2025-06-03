@@ -81,14 +81,16 @@ describe('TMDbClient', () => {
       expect(results).toHaveLength(1);
       expect(results[0]).toEqual({
         id: 123,
+        tmdbId: 123,
+        mediaType: 'movie',
         title: 'Test Movie',
-        releaseDate: '2023-01-01',
-        year: 2023,
-        posterPath: 'https://image.tmdb.org/t/p/w500/test-poster.jpg',
-        backdropPath: 'https://image.tmdb.org/t/p/original/test-backdrop.jpg',
-        voteAverage: 8.5,
-        genreIds: [28, 12],
         overview: 'This is a test movie',
+        posterPath: 'https://image.tmdb.org/t/p/w500/test-poster.jpg',
+        backdropPath: 'https://image.tmdb.org/t/p/original/test-backdrop.jpg', // Added this line
+        releaseDate: '2023-01-01',
+        voteAverage: 8.5,
+        year: 2023,
+        genreIds: [28, 12],
       });
     });
     
@@ -168,17 +170,20 @@ describe('TMDbClient', () => {
       // Assert results are normalized
       expect(result).toEqual({
         id: 123,
+        tmdbId: 123,
+        mediaType: 'movie',
         title: 'Test Movie',
-        releaseDate: '2023-01-01',
-        year: 2023,
+        overview: 'This is a test movie',
         posterPath: 'https://image.tmdb.org/t/p/w500/test-poster.jpg',
         backdropPath: 'https://image.tmdb.org/t/p/original/test-backdrop.jpg',
+        releaseDate: '2023-01-01',
         voteAverage: 8.5,
+        year: 2023,
         genres: [
           { id: 28, name: 'Action' },
           { id: 12, name: 'Adventure' },
         ],
-        overview: 'This is a test movie',
+        genreIds: [28, 12],
       });
     });
   });

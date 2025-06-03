@@ -1,8 +1,8 @@
 /**
  * Server-Side TMDB Data Service with Caching
  *
- * This service orchestrates fetching data from TMDb (via TMDbClient)
- * and caching it using RedisService. It implements a cache-aside strategy.
+ * This service is responsible for fetching data from TMDb (The Movie Database)
+ * and caching it. It implements a cache-aside strategy.
  * 
  * MUST only be used in server-side contexts.
  */
@@ -59,8 +59,7 @@ class TMDBDataService {
 
   private async getOrFetchMediaList(
     listCacheKey: string,
-    fetchFunction: () => Promise<TMDBMediaItem[]>,
-    mediaType: 'movie' | 'tv'
+    fetchFunction: () => Promise<TMDBMediaItem[]>
   ): Promise<TMDBMediaItem[]> {
     if (!TMDB_API_KEY) return [];
 
@@ -82,8 +81,7 @@ class TMDBDataService {
     const listCacheKey = `popular-movies:p${page}`;
     return this.getOrFetchMediaList(
       listCacheKey,
-      () => this.tmdbClient.getPopularMovies(page),
-      'movie'
+      () => this.tmdbClient.getPopularMovies(page)
     );
   }
 
@@ -91,8 +89,7 @@ class TMDBDataService {
     const listCacheKey = `trending-movies-${timeWindow}:p${page}`;
     return this.getOrFetchMediaList(
       listCacheKey,
-      () => this.tmdbClient.getTrendingMovies(timeWindow, page),
-      'movie'
+      () => this.tmdbClient.getTrendingMovies(timeWindow, page)
     );
   }
 
@@ -100,8 +97,7 @@ class TMDBDataService {
     const listCacheKey = `popular-tv:p${page}`;
     return this.getOrFetchMediaList(
       listCacheKey,
-      () => this.tmdbClient.getPopularTvShows(page),
-      'tv'
+      () => this.tmdbClient.getPopularTvShows(page)
     );
   }
 
@@ -109,8 +105,7 @@ class TMDBDataService {
     const listCacheKey = `trending-tv-${timeWindow}:p${page}`;
     return this.getOrFetchMediaList(
       listCacheKey,
-      () => this.tmdbClient.getTrendingTvShows(timeWindow, page),
-      'tv'
+      () => this.tmdbClient.getTrendingTvShows(timeWindow, page)
     );
   }
 
@@ -118,8 +113,7 @@ class TMDBDataService {
     const listCacheKey = `upcoming-movies:p${page}`;
     return this.getOrFetchMediaList(
       listCacheKey,
-      () => this.tmdbClient.getUpcomingMovies(page),
-      'movie'
+      () => this.tmdbClient.getUpcomingMovies(page)
     );
   }
 
@@ -127,8 +121,7 @@ class TMDBDataService {
     const listCacheKey = `top-rated-movies:p${page}`;
     return this.getOrFetchMediaList(
       listCacheKey,
-      () => this.tmdbClient.getTopRatedMovies(page),
-      'movie'
+      () => this.tmdbClient.getTopRatedMovies(page)
     );
   }
 }

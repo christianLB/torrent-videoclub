@@ -32,7 +32,7 @@ interface UseCacheHealthResult {
 }
 
 /**
- * Hook for monitoring the Redis cache health
+ * Hook for monitoring the application cache health
  * 
  * This client-side hook fetches cache status information from the API
  * and can optionally poll for updates at a specified interval.

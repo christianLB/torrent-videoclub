@@ -6,7 +6,7 @@ import type { FeaturedContent, FeaturedItem, FeaturedCategory } from '@/lib/type
 
 // export const metadata: Metadata = {
 //   title: 'Cache Management - Admin',
-//   description: 'Manage Redis cache for Torrent VideoClub',
+//   description: 'Manage application cache for Torrent VideoClub',
 // };
 
 const FeaturedItemDetails: React.FC<{ item: FeaturedItem | undefined, titlePrefix?: string }> = ({ item, titlePrefix = '' }) => {
@@ -82,9 +82,9 @@ export default function AdminCachePage() {
       <div className="grid md:grid-cols-2 gap-8 mb-8">
         {/* Existing Cache Actions Section */}
         <div className="bg-gray-800 rounded-lg p-6 shadow-lg">
-          <h2 className="text-2xl font-semibold mb-4 text-sky-400">Redis Cache Actions</h2>
+          <h2 className="text-2xl font-semibold mb-4 text-sky-400">Cache Management</h2>
           <p className="text-gray-300 mb-6">
-            Manage and refresh the Redis cache for featured content.
+            Manage and refresh the application cache for featured content.
           </p>
           
           <div className="flex flex-col space-y-4">
@@ -159,9 +159,9 @@ export default function AdminCachePage() {
         
         {/* Existing About Section - slightly restyled */}
         <div className="bg-gray-800 rounded-lg p-6 shadow-lg">
-          <h2 className="text-2xl font-semibold mb-4 text-sky-400">About Redis Caching</h2>
+          <h2 className="text-2xl font-semibold mb-4 text-sky-400">About Application Caching</h2>
           <p className="text-gray-300 mb-6">
-            Key information about the Redis caching implementation.
+            Key information about the application caching implementation.
           </p>
           
           <div className="space-y-4">

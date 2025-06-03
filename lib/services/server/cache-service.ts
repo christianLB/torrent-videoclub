@@ -2,8 +2,8 @@
 /**
  * Server-Side Cache Service
  *
- * This service provides a unified interface for cache operations
- * and abstracts away the underlying Redis service implementation.
+ * This service provides a high-level API for interacting with the cache (MongoDB)
+ * and abstracts away the underlying MongoDB caching logic.
  * It enforces strict server-only usage.
  */
 
@@ -24,7 +24,7 @@ export const MONGO_DOC_IDS = {
  * Cache service for managing server-side caching primarily via MongoDB for featured content.
  */
 export class CacheService {
-  // Singleton instance management - ensures single Redis connection across the app
+  // Singleton instance management - ensures single CacheService instance across the app
   private static instance: CacheService | null = null;
   
   /**
@@ -42,7 +42,7 @@ export class CacheService {
     return CacheService.instance;
   }
   /**
-   * Store featured content in Redis cache
+   * Store featured content in the cache
    */
   static async cacheFeaturedContent(content: FeaturedContent): Promise<void> {
     const ttlSeconds = process.env.FEATURED_CONTENT_TTL_SECONDS
@@ -173,8 +173,6 @@ export class CacheService {
     }
   }
 
-  // Removed getCacheInfo, clearAllCaches, and category-specific methods as they were Redis-specific.
-  // If a general MongoDB cache info/management is needed later, it can be a new feature.
 }
 
 

@@ -48,7 +48,6 @@ TMDB_API_KEY=your-tmdb-api-key
 ## Available Services
 
 - **Web Application**: http://localhost:3000
-- **Redis Commander** (if enabled): http://localhost:8081
 
 ## Development
 
@@ -81,9 +80,9 @@ docker-compose logs -f
 docker-compose exec app sh
 ```
 
-### Reset Database
+### Reset Volumes
 
-To reset the Redis database:
+To remove persistent volumes (e.g., for a database if one is used and configured with a volume):
 
 ```bash
 docker-compose down -v

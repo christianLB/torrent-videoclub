@@ -52,16 +52,13 @@ export interface TMDBMediaItem {
 }
 
 /**
- * Represents a list of TMDB items, stored in Redis as an array of their tmdbIds.
- * Example Redis key: "tmdb:list:popular-movies"
- * Example Redis key: "tmdb:list:trending-tv"
+ * Represents a list of TMDB items, stored in the cache as an array of their tmdbIds.
  */
 export type TMDBItemList = number[]; // An array of tmdbId numbers
 
 /**
- * Represents a single TMDB item as stored in Redis.
- * Example Redis key: "tmdb:movie:{tmdbId}"
- * Example Redis key: "tmdb:tv:{tmdbId}"
+ * Represents a single TMDB item as stored in the cache.
+ * This is typically enriched with additional metadata before being sent to the client.
  */
 // This is essentially the TMDBMediaItem itself when cached individually.
 // No separate type needed if TMDBMediaItem is directly cached.

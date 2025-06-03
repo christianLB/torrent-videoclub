@@ -10,7 +10,7 @@
 // import { getMockFeaturedContent, CONTENT_CATEGORIES } from '../data/mock-featured';
 // import { FeaturedContent, FeaturedCategory, FeaturedItem, EnhancedMediaItem } from '../types/featured';
 // import { CacheService } from './cache-service';
-// import { redisService } from './server/redis-service';
+
 import { TrendingContentClient } from './trending-content-client';
 import { MetadataEnricher } from './metadata-enricher';
 import { TMDbClient } from '../api/tmdb-client';

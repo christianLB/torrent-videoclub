@@ -145,7 +145,6 @@ export class TrendingContentClient {
       const featuredItems = results.map(result => this.prowlarrClient.convertToFeaturedItem(result));
       
       // Filter by release date if possible (looking at publishDate)
-      const now = new Date();
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
       

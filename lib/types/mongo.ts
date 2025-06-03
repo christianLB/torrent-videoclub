@@ -1,4 +1,4 @@
-import { TMDBMediaItem, TMDBGenre } from './tmdb'; // Assuming TMDBMediaItem is well-defined
+import { TMDBGenre } from './tmdb';
 
 // Base document structure for MongoDB
 export interface MongoBaseDocument {

@@ -1,5 +1,9 @@
 # Proposal: Migrating Torrent VideoClub Cache from Redis to MongoDB
 
+**Status: Completed. This document is now for historical reference only.**
+
+---
+
 **Date:** June 1, 2025
 **Author:** Cascade (AI Coding Assistant)
 **Status:** Proposed

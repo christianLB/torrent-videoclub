@@ -1,8 +1,8 @@
 /**
  * Cache Scheduler Service
  * 
- * This service uses node-cron to schedule automatic cache refreshes,
- * ensuring Redis is always populated with fresh data.
+ * This service is responsible for scheduling background tasks that update the cache,
+ * ensuring the cache is always populated with fresh data.
  */
 // import { CuratorService } from './curator-service'; // Commenting out old service
 import { tmdbDataService } from './tmdb-data-service'; // Import new TMDB data service

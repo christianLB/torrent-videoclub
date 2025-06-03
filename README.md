@@ -158,31 +158,6 @@ npm run test:watch
 └── test/             # Test files following the same structure
 ```
 
-## Data Architecture
-
-The application uses a Redis-based caching architecture to provide high-performance data access and persistence:
-
-### Redis Caching Layer
-
-- **Centralized Data Store**: Redis serves as the central data store for both the backend and frontend
-- **Isomorphic Caching**: Caching works seamlessly in both server and browser environments
-- **API Response Caching**: Responses from external APIs (Prowlarr, TMDb) are cached to reduce API calls
-- **Search Result Persistence**: Search results are stored in Redis to improve performance
-- **TTL-Based Expiration**: Different data types have appropriate time-to-live settings
-- **Automatic Fallback**: When cache misses occur, the system automatically falls back to API calls
-
-### Cache Access Patterns
-
-- **Direct API Route Access**: Frontend components access cached data via API routes
-- **SWR Integration**: Uses SWR for data fetching with automatic caching and revalidation
-- **Background Refresh**: Critical data is refreshed in the background without affecting UX
-
-### Development Setup
-
-For development, Redis is automatically launched alongside the application using either:
-- Docker Compose (recommended for production-like environment)
-- Local Redis instance with Concurrently (simpler development setup)
-
 ## Contributing
 
 1. Write tests for your feature/fix

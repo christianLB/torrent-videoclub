@@ -9,7 +9,7 @@ Key areas of focus include:
 *   Dynamic and refreshable category rows.
 *   Personalized content categories tailored to user interests or specific criteria.
 
-This proposal leverages our existing TMDB-first approach, Redis caching infrastructure, and Radarr/Sonarr integration capabilities.
+This proposal leverages our existing TMDB-first approach, MongoDB-based caching infrastructure, and Radarr/Sonarr integration capabilities.
 
 ## 2. Main Featured Carousel
 
@@ -24,7 +24,7 @@ This proposal leverages our existing TMDB-first approach, Redis caching infrastr
         *   The backend service responsible for curating carousel content (or the frontend, if handling client-side) will filter out any item whose TMDB ID matches one from the user's libraries.
         *   This ensures the carousel primarily highlights content the user has not yet added.
 *   **Content Sourcing:**
-    *   **Initial:** Utilize existing TMDB API endpoints for popular movies/TV and trending movies/TV (e.g., `/api/tmdb/movies/popular`, `/api/tmdb/tv/trending`). These are already cached in Redis.
+    *   **Initial:** Utilize existing TMDB API endpoints for popular movies/TV and trending movies/TV (e.g., `/api/tmdb/movies/popular`, `/api/tmdb/tv/trending`). These are already cached (using MongoDB).
     *   **Future:** Consider a dedicated, manually curated "carousel highlights" list, potentially managed via an admin interface or a more sophisticated backend curation logic.
 *   **UI/UX:**
     *   Smooth, touch-friendly navigation.
@@ -38,8 +38,8 @@ This proposal leverages our existing TMDB-first approach, Redis caching infrastr
 **Key Features:**
 
 *   **Data Refresh Mechanisms:**
-    *   **Automatic Background Cache Refresh:** Continue to use and enhance the Redis caching for TMDB data. Each category's data will have an appropriate TTL (e.g., `featured:category:trending_movies_week`, `featured:category:popular_tv`). Background jobs (e.g., cron, scheduled serverless functions) will periodically update these Redis caches from TMDB.
-    *   **"Pull-to-Refresh" or Manual Refresh (Optional):** Consider a UI element (e.g., a refresh icon per category or for the entire section) that allows users to manually trigger a data refresh. This would involve an API call that invalidates the relevant Redis cache(s) and fetches fresh data on demand.
+    *   **Automatic Background Cache Refresh:** Continue to use and enhance the MongoDB-based caching for TMDB data. Each category's data will have an appropriate TTL (e.g., `featured:category:trending_movies_week`, `featured:category:popular_tv`). Background jobs (e.g., cron, scheduled serverless functions) will periodically update these MongoDB caches from TMDB.
+    *   **"Pull-to-Refresh" or Manual Refresh (Optional):** Consider a UI element (e.g., a refresh icon per category or for the entire section) that allows users to manually trigger a data refresh. This would involve an API call that invalidates the relevant cache(s) in MongoDB and fetches fresh data on demand.
 *   **Content Sourcing & Variety:**
     *   Leverage various TMDB endpoints (trending, popular, discover by genre/keyword/year, etc.).
     *   Potentially integrate Prowlarr-based data for categories like "Latest Releases Available" (though this requires careful consideration of how to blend Prowlarr items with TMDB-enriched data for display consistency).
@@ -81,7 +81,7 @@ This proposal leverages our existing TMDB-first approach, Redis caching infrastr
     *   Ensure the `FeaturedItem` type (as defined in `lib/types/featured.ts`) can accommodate all necessary display data (TMDB ID, full image paths, display title, library status hints if pre-calculated).
 *   **Performance:**
     *   Frontend: Implement lazy loading for images and potentially for entire category rows as they scroll into view.
-    *   Backend: Optimize TMDB queries and ensure Redis lookups are fast.
+    *   Backend: Optimize TMDB queries and ensure cache lookups (MongoDB) are fast.
     *   Client-side state management (e.g., React Query, SWR) should be used to handle fetching, caching, and updating of featured content on the client.
 
 ### 5.1. Configuration for Dynamic Categories (Initial Iteration)
@@ -147,7 +147,7 @@ For the initial implementation of custom and personalized categories (as outline
     *   This `GET` endpoint will:
         *   Utilize `FeaturedCategoryConfigService` to retrieve the list of enabled category definitions.
         *   Iterate through each definition:
-            *   Construct a unique cache key for Redis (e.g., `featured:custom:${category.id}`).
+            *   Construct a unique cache key for the cache (e.g., `featured:custom:${category.id}`).
             *   Call `tmdbDataService.discoverMedia(type, params, cacheKey)` (assuming `tmdbDataService` is extended or has a suitable method) to fetch and cache data from TMDB based on `tmdbDiscoverParams`.
         *   Return a structured response, e.g., `[{ "id": "sci_fi_classics_movies", "title": "Science Fiction Classics", "items": [...] }, ...]`, ensuring the `id` from the config is passed through for client-side keying or other purposes.
 4.  **Frontend Integration (`FeaturedPage.tsx` or sub-components):**
@@ -164,7 +164,7 @@ This JSON-driven approach provides flexibility for the initial rollout, allowing
     *   Implement the main featured carousel.
     *   Integrate Radarr/Sonarr library checks for the "Not in Library" filter on the carousel.
     *   Populate carousel and 2-3 initial category rows using existing TMDB popular/trending feeds (e.g., "Trending Movies", "Popular TV Shows").
-    *   Ensure robust Redis caching and background refresh for these initial feeds.
+    *   Ensure robust MongoDB caching and background refresh for these initial feeds.
 *   **Phase 2: JSON-Configured Custom Categories & Enhanced Management**
     *   Implement the JSON-based configuration for dynamic categories as detailed in section 5.1. This includes creating `featured_categories.json`, the `FeaturedCategoryConfigService`, and the `/api/featured/custom-categories` endpoint.
     *   Populate `featured_categories.json` with 2-3 initial custom categories (e.g., "Sci-Fi Classics", "Latest from [Specific Country]").

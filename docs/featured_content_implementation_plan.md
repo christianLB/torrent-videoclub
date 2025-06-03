@@ -23,7 +23,7 @@ This plan addresses previous implementation challenges and aims to provide a con
 1.  **Backend**:
     *   A service (e.g., `CuratorService` or a dedicated `FeaturedContentService`) fetches potential featured items. These items are typically search results from Prowlarr, each having a unique `guid`, `indexerId`, `title`, `size`, `seeders`, etc.
     *   For each Prowlarr result, the service attempts to enrich it with metadata from TMDb (using the title and year for searching TMDb, or an existing `tmdbId` if already mapped). This enrichment provides `posterPath`, `backdropPath`, `overview`, `rating`, etc.
-    *   The combined data (Prowlarr `guid` + TMDb metadata) is cached (e.g., in Redis).
+    *   The combined data (Prowlarr `guid` + TMDb metadata) is cached (e.g., using a MongoDB-based cache).
 2.  **API Layer (`/api/featured`)**:
     *   Serves the cached and enriched featured content to the frontend.
     *   Includes the raw Prowlarr `guid` and necessary Prowlarr-related identifiers (like `indexerId`) for each item.

@@ -1,4 +1,4 @@
-import { MongoClient, Db, Collection, ObjectId } from 'mongodb';
+import { MongoClient, Db, Collection } from 'mongodb';
 import { MongoMediaItem, MongoCuratedList, MEDIA_ITEMS_COLLECTION, CURATED_LISTS_COLLECTION } from '../../types/mongo';
 
 const MONGODB_URI = process.env.MONGODB_URI;

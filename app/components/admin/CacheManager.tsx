@@ -40,7 +40,7 @@ export default function CacheManager() {
       <button onClick={handleRefresh} disabled={isRefreshing || isClearing || !isConnected}>
         {isRefreshing ? 'Refreshing...' : 'Refresh Featured'}
       </button>
-      <p>{isChecking ? 'Checking connection...' : isConnected ? 'Connected to Redis' : 'Disconnected from Redis'}</p>
+      <p>{isChecking ? 'Checking cache status...' : isConnected ? 'Cache Service: Online' : 'Cache Service: Offline'}</p>
       {lastRefreshed && <p>Last refreshed: {lastRefreshed.toLocaleString()}</p>}
     </div>
   );
