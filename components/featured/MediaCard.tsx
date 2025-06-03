@@ -28,7 +28,20 @@ const MediaCard: React.FC<MediaCardProps> = ({ item, onAddToLibrary, inLibrary, 
   // Prepare display data
   const displayTitle = title || 'Untitled';
   const displayYear = releaseDate ? new Date(releaseDate).getFullYear() : (firstAirDate ? new Date(firstAirDate).getFullYear() : undefined);
-  const fullPosterPath = posterPath ? `https://image.tmdb.org/t/p/w500${posterPath}` : '/placeholder_500x750.svg';
+  
+  const imageTmdbBaseUrl = 'https://image.tmdb.org';
+  let fullPosterPath = '/placeholder_500x750.svg'; // Default placeholder
+
+  if (posterPath) {
+    if (posterPath.startsWith('http')) { // Checks if it's an absolute URL
+      fullPosterPath = posterPath; // Use as is
+    } else {
+      // It's a relative path, ensure it starts with a slash for cleanliness if not already
+      const cleanPosterPath = posterPath.startsWith('/') ? posterPath : `/${posterPath}`;
+      fullPosterPath = `${imageTmdbBaseUrl}/t/p/w500${cleanPosterPath}`; 
+    }
+  }
+
   const displayOverview = overview || 'No description available.';
   const displayRating = voteAverage || 0;
   

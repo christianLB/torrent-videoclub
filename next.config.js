@@ -5,7 +5,14 @@ require('dotenv').config();
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: ['image.tmdb.org'], // Allow images from TMDb
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'image.tmdb.org',
+        port: '',
+        pathname: '/t/p/**',
+      },
+    ],
   },
   // Disable ESLint during build to allow it to complete
   eslint: {
