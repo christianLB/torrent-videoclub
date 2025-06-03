@@ -21,6 +21,15 @@ interface MongoServiceType {
 
 const MongoService: MongoServiceType = {
   async connect(): Promise<Db> {
+    const isBuildEnvironment = process.env.NODE_ENV === 'production' || process.env.CI === 'true';
+    if (isBuildEnvironment) {
+      // If db is already connected (e.g. from a previous non-build context, though unlikely for a clean build),
+      // return it. Otherwise, prevent new connection attempts during build/CI.
+      if (db) return db;
+      console.warn('[MongoService] Attempt to connect to MongoDB in build/CI environment. Connection prohibited.');
+      throw new Error('MongoDB connection attempt in build/CI environment is not allowed. Services should use mock data or fallbacks.');
+    }
+
     if (db) {
       return db;
     }

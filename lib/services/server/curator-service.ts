@@ -306,10 +306,10 @@ export async function getFeaturedContent(
   trendingClientInstance: TrendingContentClient | null, 
   currentCacheService: typeof CacheService
 ): Promise<FeaturedContent> {
-  // If in build environment (NODE_ENV is 'production' during 'next build'),
-  // return mock data immediately to prevent timeouts from DB/API calls.
-  if (process.env.NODE_ENV === 'production') {
-    console.log('[CuratorService] Build environment detected (NODE_ENV=production), returning mock featured content.');
+  // If in a build or CI environment, return mock data immediately to prevent timeouts from DB/API calls.
+  const isBuildEnvironment = process.env.NODE_ENV === 'production' || process.env.CI === 'true';
+  if (isBuildEnvironment) {
+    console.log('[CuratorService] Build/CI environment detected (NODE_ENV_PRODUCTION_OR_CI_TRUE), returning mock featured content.');
     return getMockFeaturedContent();
   }
 
