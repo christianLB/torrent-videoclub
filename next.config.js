@@ -12,15 +12,6 @@ const nextConfig = {
     // Warning: only do this temporarily
     ignoreDuringBuilds: true,
   },
-  // Convert experimental options to standard options (Next.js 15.x)
-  serverExternalPackages: [],
-  outputFileTracingExcludes: {
-    '*': ['node_modules/**']
-  },
-  // Disable tracing to avoid permission issues
-  tracing: {
-    ignoreOutgoingTraceSpans: true
-  },
   // Environment variables configuration
   env: {
     // These will be available on both server and client

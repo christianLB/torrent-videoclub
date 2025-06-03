@@ -306,6 +306,13 @@ export async function getFeaturedContent(
   trendingClientInstance: TrendingContentClient | null, 
   currentCacheService: typeof CacheService
 ): Promise<FeaturedContent> {
+  // If in build environment (NODE_ENV is 'production' during 'next build'),
+  // return mock data immediately to prevent timeouts from DB/API calls.
+  if (process.env.NODE_ENV === 'production') {
+    console.log('[CuratorService] Build environment detected (NODE_ENV=production), returning mock featured content.');
+    return getMockFeaturedContent();
+  }
+
   try {
     console.log('[CuratorService] Attempting to get featured content from MongoDB cache');
     const cachedData = await currentCacheService.getCachedFeaturedContent();
