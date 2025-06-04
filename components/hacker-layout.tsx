@@ -94,40 +94,36 @@ export function HackerLayout({ children }: HackerLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col p-4 sm:p-8 items-center justify-center">
-      {/* Main application container with neon border and centered layout */}
-      <div className="w-full max-w-screen-2xl min-h-[calc(100vh-4rem)] sm:min-h-[calc(100vh-8rem)] bg-black text-white flex flex-col rounded-xl lightsaber-border p-4 sm:p-6 relative overflow-hidden">
+    <div className="min-h-screen bg-black text-white flex flex-col">
       {/* <TerminalHeader /> */}
-      
-      <nav className="w-full py-3">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="text-2xl font-bold neon-text-cyan hover:opacity-80 transition-opacity duration-150">
-              TorrentClub
+
+      <nav className="w-full py-4 border-b border-green-900">
+        <div className="px-4 flex items-center justify-between">
+          <Link href="/" className="text-2xl font-bold neon-text-cyan hover:opacity-80 transition-opacity duration-150">
+            TorrentClub
+          </Link>
+          <div className="flex items-center space-x-6">
+            <Link href="/movies" className="text-lg neon-text-cyan hover:opacity-80 transition-opacity duration-150">
+              Movies
             </Link>
-            <div className="flex items-center space-x-6">
-              <Link href="/movies" className="text-lg neon-text-cyan hover:opacity-80 transition-opacity duration-150">
-                Movies
-              </Link>
-              <Link href="/series" className="text-lg neon-text-cyan hover:opacity-80 transition-opacity duration-150">
-                Series
-              </Link>
-            </div>
+            <Link href="/series" className="text-lg neon-text-cyan hover:opacity-80 transition-opacity duration-150">
+              Series
+            </Link>
           </div>
         </div>
       </nav>
-      
+
       <main className="flex-1 relative">
         {/* Subtle scanline effect */}
         <div className="scanlines absolute inset-0 pointer-events-none"></div>
-        
-        <div className="container mx-auto px-4 py-6">
+
+        <div className="px-4 py-6">
           {children}
         </div>
       </main>
-      
+
       <footer className="bg-gray-900 border-t border-green-900 py-4 text-sm text-gray-500 font-mono">
-        <div className="container mx-auto px-4">
+        <div className="px-4">
           <div className="flex justify-between items-center">
             <div>TORRENT-OS v1.337 © {new Date().getFullYear()}</div>
             <div className="flex items-center space-x-1">
@@ -135,7 +131,7 @@ export function HackerLayout({ children }: HackerLayoutProps) {
               <span>CONNECTION SECURED</span>
             </div>
           </div>
-          
+
           {/* Random hacker quotes that change on each page load */}
           <div className="text-center mt-2 text-green-600">
             {[
@@ -152,6 +148,5 @@ export function HackerLayout({ children }: HackerLayoutProps) {
         </div>
       </footer>
     </div>
-  </div>
-);
+  );
 }
