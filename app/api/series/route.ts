@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { ProwlarrClient } from '../../../lib/api/prowlarr-client';
 import { TMDbClient } from '../../../lib/api/tmdb-client';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
   try {
     // Get query parameters from the request URL
