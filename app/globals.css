@@ -63,6 +63,11 @@
     --border: 0 0% 14.9%;
     --input: 0 0% 14.9%;
     --ring: 0 0% 83.1%;
+
+    /* Neon Palette */
+    --neon-blue: 220 100% 60%;
+    --neon-pink: 320 100% 60%;
+    --neon-cyan: 190 100% 60%;
   }
 }
 
@@ -70,6 +75,10 @@
   * {
     @apply border-border;
   }
+  html {
+    font-size: 20px; /* Base font size for 10-foot UI */
+  }
+
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
@@ -86,5 +95,161 @@
   
   .hide-scrollbar::-webkit-scrollbar {
     display: none; /* Chrome, Safari and Opera */
+  }
+
+  /* Neon Effect Utilities */
+
+  @keyframes neon-pulse-text {
+    0% {
+      text-shadow:
+        0 0 4px hsl(var(--neon-color) / 0.6),
+        0 0 8px hsl(var(--neon-color) / 0.6),
+        0 0 12px hsl(var(--neon-color) / 0.6),
+        0 0 16px hsl(var(--neon-color) / 0.9),
+        0 0 24px hsl(var(--neon-color) / 0.9);
+    }
+    100% {
+      text-shadow:
+        0 0 5px hsl(var(--neon-color) / 0.7),
+        0 0 10px hsl(var(--neon-color) / 0.7),
+        0 0 15px hsl(var(--neon-color) / 0.7),
+        0 0 20px hsl(var(--neon-color)),
+        0 0 30px hsl(var(--neon-color));
+    }
+  }
+
+  @keyframes neon-pulse-border {
+    0% {
+      box-shadow: var(--original-box-shadow-start);
+    }
+    100% {
+      box-shadow: var(--original-box-shadow-end);
+    }
+  }
+
+  /* Specific keyframes for double border due to complexity */
+  @keyframes neon-pulse-double-border {
+    0% {
+      box-shadow:
+        0 0 4px 1px hsl(var(--neon-blue)),
+        0 0 8px 4px hsl(var(--neon-blue) / 0.6),
+        inset 0 0 4px 1px hsl(var(--neon-pink)),
+        inset 0 0 6px 2px hsl(var(--neon-pink) / 0.6);
+    }
+    100% {
+      box-shadow:
+        0 0 5px 2px hsl(var(--neon-blue)),
+        0 0 10px 5px hsl(var(--neon-blue) / 0.7),
+        inset 0 0 5px 2px hsl(var(--neon-pink)),
+        inset 0 0 8px 3px hsl(var(--neon-pink) / 0.7);
+    }
+  }
+  .neon-text-blue {
+    --neon-color: var(--neon-blue);
+    color: hsl(var(--neon-color));
+    text-shadow:
+      0 0 5px hsl(var(--neon-color) / 0.7),
+      0 0 10px hsl(var(--neon-color) / 0.7),
+      0 0 15px hsl(var(--neon-color) / 0.7),
+      0 0 20px hsl(var(--neon-color)),
+      0 0 30px hsl(var(--neon-color));
+    animation: neon-pulse-text 2.5s infinite alternate;
+  }
+
+  .neon-text-pink {
+    --neon-color: var(--neon-pink);
+    color: hsl(var(--neon-color));
+    text-shadow:
+      0 0 5px hsl(var(--neon-color) / 0.7),
+      0 0 10px hsl(var(--neon-color) / 0.7),
+      0 0 15px hsl(var(--neon-color) / 0.7),
+      0 0 20px hsl(var(--neon-color)),
+      0 0 30px hsl(var(--neon-color));
+    animation: neon-pulse-text 2.5s infinite alternate;
+  }
+
+  .neon-text-cyan {
+    --neon-color: var(--neon-cyan);
+    color: hsl(var(--neon-color));
+    text-shadow:
+      0 0 5px hsl(var(--neon-color) / 0.7),
+      0 0 10px hsl(var(--neon-color) / 0.7),
+      0 0 15px hsl(var(--neon-color) / 0.7),
+      0 0 20px hsl(var(--neon-color)),
+      0 0 30px hsl(var(--neon-color));
+    animation: neon-pulse-text 2.5s infinite alternate;
+  }
+
+  .neon-border-blue {
+    --original-box-shadow-start:
+      0 0 2px hsl(var(--neon-blue)),
+      0 0 4px hsl(var(--neon-blue)),
+      0 0 6px hsl(var(--neon-blue));
+    --original-box-shadow-end:
+      0 0 3px hsl(var(--neon-blue)),
+      0 0 5px hsl(var(--neon-blue)),
+      0 0 8px hsl(var(--neon-blue));
+    box-shadow: var(--original-box-shadow-end);
+    animation: neon-pulse-border 2.5s infinite alternate;
+  }
+
+  .neon-border-pink {
+    --original-box-shadow-start:
+      0 0 2px hsl(var(--neon-pink)),
+      0 0 4px hsl(var(--neon-pink)),
+      0 0 6px hsl(var(--neon-pink));
+    --original-box-shadow-end:
+      0 0 3px hsl(var(--neon-pink)),
+      0 0 5px hsl(var(--neon-pink)),
+      0 0 8px hsl(var(--neon-pink));
+    box-shadow: var(--original-box-shadow-end);
+    animation: neon-pulse-border 2.5s infinite alternate;
+  }
+
+  .neon-border-double {
+    box-shadow:
+      0 0 5px 2px hsl(var(--neon-blue)),
+      0 0 10px 5px hsl(var(--neon-blue) / 0.7),
+      inset 0 0 5px 2px hsl(var(--neon-pink)),
+      inset 0 0 8px 3px hsl(var(--neon-pink) / 0.7);
+    animation: neon-pulse-double-border 2.5s infinite alternate;
+  }
+
+  @keyframes lightsaber-breath {
+    0% {
+      box-shadow:
+        /* Cyan dominant */
+        0 0 7px 2px hsl(var(--neon-cyan)),
+        0 0 15px 5px hsl(var(--neon-cyan) / 0.6),
+        0 0 2px 1px hsl(var(--neon-pink) / 0.5), /* Hint of pink */
+        inset 0 0 3px 1px hsl(var(--neon-cyan) / 0.4);
+    }
+    50% {
+      box-shadow:
+        /* Pink dominant */
+        0 0 7px 2px hsl(var(--neon-pink)),
+        0 0 15px 5px hsl(var(--neon-pink) / 0.6),
+        0 0 2px 1px hsl(var(--neon-cyan) / 0.5), /* Hint of cyan */
+        inset 0 0 3px 1px hsl(var(--neon-pink) / 0.4);
+    }
+    100% {
+      box-shadow:
+        /* Cyan dominant */
+        0 0 7px 2px hsl(var(--neon-cyan)),
+        0 0 15px 5px hsl(var(--neon-cyan) / 0.6),
+        0 0 2px 1px hsl(var(--neon-pink) / 0.5),
+        inset 0 0 3px 1px hsl(var(--neon-cyan) / 0.4);
+    }
+  }
+
+  .lightsaber-border {
+    /* Ensure border is visible for the glow */
+    border: 1px solid transparent; /* Or match a very dark theme color if needed */
+    box-shadow:
+      0 0 7px 2px hsl(var(--neon-cyan)),
+      0 0 15px 5px hsl(var(--neon-cyan) / 0.6),
+      0 0 2px 1px hsl(var(--neon-pink) / 0.5),
+      inset 0 0 3px 1px hsl(var(--neon-cyan) / 0.4);
+    animation: lightsaber-breath 4s infinite ease-in-out;
   }
 }

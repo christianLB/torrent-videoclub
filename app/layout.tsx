@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 // import { Geist, Geist_Mono } from "next/font/google"; // Commented out Geist fonts
-import { JetBrains_Mono } from "next/font/google";
+import { JetBrains_Mono, Poppins } from "next/font/google";
 import "./globals.css";
 import "../styles/hacker-theme.css";
 import { cn } from "@/lib/utils";
@@ -22,6 +22,14 @@ import { Toaster } from "react-hot-toast";
 const jetBrainsMono = JetBrains_Mono({
   variable: "--font-mono",
   subsets: ["latin"],
+  display: 'swap',
+});
+
+const poppins = Poppins({
+  variable: "--font-sans",
+  subsets: ["latin"],
+  weight: ['400', '600', '700'],
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
@@ -37,12 +45,12 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="icon" href="/favicon.ico" sizes="any" />
       </head>
       <body className={cn(
-        "min-h-screen bg-gray-950 antialiased", // Removed font-sans as Geist was the sans font
-        // geistSans.variable, // Commented out Geist font variables
-        // geistMono.variable,
+        "min-h-screen bg-gray-950 antialiased font-sans",
+        poppins.variable,
         jetBrainsMono.variable
       )}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>

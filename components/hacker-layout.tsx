@@ -94,29 +94,23 @@ export function HackerLayout({ children }: HackerLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col">
+    <div className="min-h-screen bg-black text-white flex flex-col p-4 sm:p-8 items-center justify-center">
+      {/* Main application container with neon border and centered layout */}
+      <div className="w-full max-w-screen-2xl min-h-[calc(100vh-4rem)] sm:min-h-[calc(100vh-8rem)] bg-black text-white flex flex-col rounded-xl lightsaber-border p-4 sm:p-6 relative overflow-hidden">
       {/* <TerminalHeader /> */}
       
-      <nav className="bg-gray-900 border-b border-green-900">
-        <div className="container mx-auto px-4 py-3">
+      <nav className="w-full py-3">
+        <div className="container mx-auto px-4">
           <div className="flex items-center justify-between">
-            <Link href="/" className="text-2xl font-bold font-mono text-green-500 flex items-center">
-              <span className="pirate-flag mr-2 text-green-400" />
-              <span className="glitch-text" data-text="TorrentClub">TorrentClub</span>
+            <Link href="/" className="text-2xl font-bold neon-text-cyan hover:opacity-80 transition-opacity duration-150">
+              TorrentClub
             </Link>
-            
-            <div className="flex space-x-6">
-              <Link 
-                href="/movies" 
-                className="text-gray-300 hover:text-green-400 font-mono text-sm transition-colors flex items-center"
-              >
-                <span className="text-green-700 mr-1">&gt;</span> Movies
+            <div className="flex items-center space-x-6">
+              <Link href="/movies" className="text-lg neon-text-cyan hover:opacity-80 transition-opacity duration-150">
+                Movies
               </Link>
-              <Link 
-                href="/series" 
-                className="text-gray-300 hover:text-green-400 font-mono text-sm transition-colors flex items-center"
-              >
-                <span className="text-green-700 mr-1">&gt;</span> Series
+              <Link href="/series" className="text-lg neon-text-cyan hover:opacity-80 transition-opacity duration-150">
+                Series
               </Link>
             </div>
           </div>
@@ -132,7 +126,7 @@ export function HackerLayout({ children }: HackerLayoutProps) {
         </div>
       </main>
       
-      <footer className="bg-gray-900 border-t border-green-900 py-4 text-xs text-gray-500 font-mono">
+      <footer className="bg-gray-900 border-t border-green-900 py-4 text-sm text-gray-500 font-mono">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center">
             <div>TORRENT-OS v1.337 © {new Date().getFullYear()}</div>
@@ -143,7 +137,7 @@ export function HackerLayout({ children }: HackerLayoutProps) {
           </div>
           
           {/* Random hacker quotes that change on each page load */}
-          <div className="text-center mt-2 text-green-800">
+          <div className="text-center mt-2 text-green-600">
             {[
               "The quieter you become, the more you can hear.",
               "Knowledge is free. Information is power.",
@@ -158,5 +152,6 @@ export function HackerLayout({ children }: HackerLayoutProps) {
         </div>
       </footer>
     </div>
-  );
+  </div>
+);
 }

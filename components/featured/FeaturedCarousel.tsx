@@ -94,8 +94,8 @@ const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({ item }) => {
 
   if (isLoading) {
     return (
-      <div className="w-full h-64 md:h-96 flex items-center justify-center bg-gray-800 rounded-lg shadow-lg">
-        <p className="text-gray-400 text-lg">Loading Carousel...</p>
+      <div className="w-full h-64 md:h-96 flex items-center justify-center bg-transparent rounded-lg">
+        <p className="text-slate-500 text-lg">Loading Carousel...</p>
         {/* You could add a spinner here */}
       </div>
     );
@@ -103,8 +103,8 @@ const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({ item }) => {
 
   if (error) {
     return (
-      <div className="w-full h-64 md:h-96 flex flex-col items-center justify-center bg-red-900 text-white p-4 rounded-lg shadow-lg">
-        <p className="text-xl font-semibold">Error loading carousel</p>
+      <div className="w-full h-64 md:h-96 flex flex-col items-center justify-center bg-pink-950 text-pink-400 p-4 rounded-lg">
+        <p className="text-xl font-semibold neon-text-pink">Error loading carousel</p>
         <p>{error}</p>
       </div>
     );
@@ -115,8 +115,8 @@ const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({ item }) => {
   
   if (items.length === 0) {
     return (
-      <div className="w-full h-64 md:h-96 flex items-center justify-center bg-gray-700 rounded-lg shadow-lg">
-        <p className="text-gray-300">No items to display in carousel.</p>
+      <div className="w-full h-64 md:h-96 flex items-center justify-center bg-transparent rounded-lg">
+        <p className="text-slate-500">No items to display in carousel.</p>
       </div>
     );
   }
@@ -154,6 +154,7 @@ const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({ item }) => {
                         fill
                         style={{ objectFit: 'cover', objectPosition: 'center' }}
                         className="transition-transform duration-300 ease-in-out group-hover:scale-105"
+                        loading="lazy"
                         unoptimized={true}
                       />
                     ) : (
@@ -164,10 +165,10 @@ const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({ item }) => {
                     );
                   })()}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent p-4 md:p-8 flex flex-col justify-end">
-                    <h3 className="text-white text-xl md:text-3xl lg:text-4xl font-bold drop-shadow-lg">
+                    <h3 className="neon-text-pink text-xl md:text-3xl lg:text-4xl font-bold">
                       {item.title || (item.mediaType === 'movie' ? 'Untitled Movie' : 'Untitled TV Show')}
                     </h3>
-                    <p className="text-gray-300 text-xs md:text-sm mt-1 md:mt-2 line-clamp-2 md:line-clamp-3 drop-shadow-md">
+                    <p className="text-gray-300 text-sm md:text-base mt-1 md:mt-2 line-clamp-2 md:line-clamp-3 drop-shadow-md">
                       {item.overview || 'Overview not available.'}
                     </p>
                   </div>
@@ -181,20 +182,20 @@ const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({ item }) => {
       {items.length > 1 && (
         <>
           <button
-            className="embla__prev absolute top-1/2 left-2 md:left-4 transform -translate-y-1/2 bg-black/50 hover:bg-black/75 text-white p-2 md:p-3 rounded-full focus:outline-none transition-opacity duration-300 z-10"
+            className="embla__prev absolute top-1/2 left-2 md:left-4 transform -translate-y-1/2 neon-border-cyan neon-text-cyan hover:bg-neon-cyan/10 p-3 md:p-4 rounded-full focus:outline-none transition-all duration-300 z-10"
             onClick={scrollPrev}
             aria-label="Previous slide"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 md:w-6 md:h-6">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 md:w-8 md:h-8">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
             </svg>
           </button>
           <button
-            className="embla__next absolute top-1/2 right-2 md:right-4 transform -translate-y-1/2 bg-black/50 hover:bg-black/75 text-white p-2 md:p-3 rounded-full focus:outline-none transition-opacity duration-300 z-10"
+            className="embla__next absolute top-1/2 right-2 md:right-4 transform -translate-y-1/2 neon-border-cyan neon-text-cyan hover:bg-neon-cyan/10 p-3 md:p-4 rounded-full focus:outline-none transition-all duration-300 z-10"
             onClick={scrollNext}
             aria-label="Next slide"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 md:w-6 md:h-6">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 md:w-8 md:h-8">
               <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
             </svg>
           </button>

@@ -83,14 +83,14 @@ const MediaCard: React.FC<MediaCardProps> = ({ item, onAddToLibrary, inLibrary, 
   };
 
   return (
-    <div className="group relative w-[180px] flex-shrink-0 transition-transform duration-300 hover:scale-105">
+    <div className="group relative w-[180px] flex-shrink-0 transition-transform duration-300 hover:scale-105 hover:neon-border-cyan rounded-md">
       {/* Poster Image */}
-      <div className="relative w-full h-[270px] rounded-md overflow-hidden bg-gray-800">
+      <div className="relative w-full h-[270px] rounded-md overflow-hidden bg-slate-900">
         {fullPosterPath ? (
           <>
             {/* Loading skeleton */}
             <div className={`absolute inset-0 bg-gray-800 flex items-center justify-center transition-opacity duration-300 ${imageLoaded ? 'opacity-0' : 'opacity-100'}`}>
-              <div className="w-12 h-12 rounded-full border-2 border-t-transparent border-green-500 animate-spin"></div>
+              <div className="w-12 h-12 rounded-full border-2 border-t-transparent border-cyan-500 animate-spin"></div>
             </div>
 
             <Image
@@ -118,10 +118,10 @@ const MediaCard: React.FC<MediaCardProps> = ({ item, onAddToLibrary, inLibrary, 
           {displayRating > 0 && (
             <div className="flex items-center">
               <div className="flex items-center bg-black/70 rounded px-1.5 py-0.5">
-                <svg className="w-4 h-4 text-yellow-400 mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                <svg className="w-4 h-4 neon-text-cyan mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
                   <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
                 </svg>
-                <span className="text-white text-xs">{displayRating.toFixed(1)}</span>
+                <span className="text-white text-sm">{displayRating.toFixed(1)}</span>
               </div>
             </div>
           )}
@@ -133,7 +133,7 @@ const MediaCard: React.FC<MediaCardProps> = ({ item, onAddToLibrary, inLibrary, 
               onMouseEnter={() => setShowOverview(true)}
               onMouseLeave={() => setShowOverview(false)}
             >
-              <p className="text-xs text-white leading-tight">
+              <p className="text-sm text-slate-300 leading-tight">
                 {showOverview ? displayOverview : displayOverview.substring(0, 100) + (displayOverview.length > 100 ? '...' : '')}
               </p>
             </div>
@@ -142,7 +142,7 @@ const MediaCard: React.FC<MediaCardProps> = ({ item, onAddToLibrary, inLibrary, 
           {/* Bottom section with buttons */}
           <div>
             <button 
-              className="bg-green-600 hover:bg-green-700 text-white w-full py-1 rounded text-sm mb-2 flex justify-center items-center disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-1 rounded text-base mb-2 flex justify-center items-center neon-text-pink neon-border-pink border border-pink-500/30 hover:bg-pink-500/20 transition-colors duration-150 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:bg-transparent"
               onClick={handleAddToLibrary}
               disabled={isAddingToLibrary || inLibrary || isAddingToLibraryGlobal}
               data-testid="media-card-add-to-library"
@@ -167,8 +167,8 @@ const MediaCard: React.FC<MediaCardProps> = ({ item, onAddToLibrary, inLibrary, 
       
       {/* Title */}
       <div className="mt-2">
-        <h3 className="text-sm font-medium text-white truncate">{displayTitle}</h3>
-        <p className="text-xs text-gray-400">{displayYear}</p>
+        <h3 className="text-base font-medium text-white truncate">{displayTitle}</h3>
+        <p className="text-sm text-gray-400">{displayYear}</p>
       </div>
     </div>
   );

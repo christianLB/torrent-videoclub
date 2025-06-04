@@ -18,10 +18,10 @@ const CategoryRow: React.FC<CategoryRowProps> = ({ category, onAddToLibrary, lib
   return (
     <section className="mb-8">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-white">{category.title}</h2>
+        <h2 className="text-xl font-bold neon-text-pink">{category.title}</h2>
         <Link 
           href={`/category/${category.id}`} 
-          className="text-sm text-gray-400 hover:text-white transition-colors flex items-center"
+          className="text-base text-slate-400 hover:neon-text-cyan transition-colors flex items-center"
         >
           See All
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -43,8 +43,8 @@ const CategoryRow: React.FC<CategoryRowProps> = ({ category, onAddToLibrary, lib
         </div>
         
         {/* Gradient fades on the sides to indicate scrollable content */}
-        <div className="absolute top-0 bottom-4 left-0 w-8 bg-gradient-to-r from-gray-900 to-transparent pointer-events-none" />
-        <div className="absolute top-0 bottom-4 right-0 w-8 bg-gradient-to-l from-gray-900 to-transparent pointer-events-none" />
+        <div className="absolute top-0 bottom-4 left-0 w-8 bg-gradient-to-r from-black to-transparent pointer-events-none" />
+        <div className="absolute top-0 bottom-4 right-0 w-8 bg-gradient-to-l from-black to-transparent pointer-events-none" />
       </div>
     </section>
   );
