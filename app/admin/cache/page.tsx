@@ -55,13 +55,13 @@ export default function AdminCachePage() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/admin'); // Endpoint you created
+      const response = await fetch('/api/cache');
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || `Error: ${response.status}`);
       }
-      const data: FeaturedContent = await response.json();
-      setCachedData(data);
+      const data = await response.json();
+      setCachedData(data.featuredContent as FeaturedContent);
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
@@ -89,8 +89,8 @@ export default function AdminCachePage() {
           
           <div className="flex flex-col space-y-4">
             {/* Link to check status - adjust if API endpoint differs */}
-            <Link 
-              href="/api/cache/refresh" // This might need to be a status check endpoint if different
+            <Link
+              href="/api/cache"
               className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded text-center font-medium transition-colors"
             >
               Check Cache Health/Status (Example)
