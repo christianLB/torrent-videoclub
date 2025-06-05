@@ -68,3 +68,12 @@ export interface MongoCuratedList extends MongoBaseDocument {
 
 export const MEDIA_ITEMS_COLLECTION = 'mediaItems';
 export const CURATED_LISTS_COLLECTION = 'curatedLists';
+export interface MongoFeaturedCategory extends MongoBaseDocument {
+  title: string;
+  type: 'movie' | 'tv';
+  tmdbParams?: Record<string, any>;
+  order: number;
+  enabled: boolean;
+}
+
+export const FEATURED_CATEGORIES_COLLECTION = 'featuredCategories';

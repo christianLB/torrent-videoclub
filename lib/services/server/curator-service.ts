@@ -6,9 +6,10 @@
 
 import { TrendingContentClient } from './trending-content-client';
 import { FeaturedContent, FeaturedItem, FeaturedCategory, TMDbEnrichmentData } from '../../types/featured';
-import { TMDbClient } from '../../api/tmdb-client'; 
+import { TMDbClient } from '../../api/tmdb-client';
 import { getMockFeaturedContent } from '../../data/mock-featured';
 import { CacheService } from './cache-service';
+import { CategoryConfigService } from './category-config-service';
 
 // Define TMDb types locally, mirroring structure from tmdb-client.ts (RawTMDbMovie/RawTMDbTvShow)
 interface TMDbGenre { id: number; name: string }
@@ -101,43 +102,6 @@ if (!tmdbClient) {
 // Placeholder for actual implementation if needed elsewhere, or remove if not used by these functions
 const isUsingRealData = () => true; 
 
-const DEFAULT_CATEGORIES_CONFIG: Array<{
-  id: string;
-  title: string;
-  fetcher: (client: TrendingContentClient, limit: number) => Promise<FeaturedItem[]>;
-  limit: number;
-}> = [
-  {
-    id: 'trendingMovies',
-    title: 'Trending Movies',
-    fetcher: (client, limit) => client.getTrendingMovies({ limit }),
-    limit: 15,
-  },
-  {
-    id: 'popularTV',
-    title: 'Popular TV Shows',
-    fetcher: (client, limit) => client.getPopularTV({ limit }),
-    limit: 15,
-  },
-  {
-    id: 'newReleases',
-    title: 'New Releases',
-    fetcher: (client, limit) => client.getNewReleases({ limit }),
-    limit: 15,
-  },
-  {
-    id: 'fourKContent',
-    title: '4K Content',
-    fetcher: (client, limit) => client.get4KContent({ limit }),
-    limit: 15,
-  },
-  {
-    id: 'documentaries',
-    title: 'Documentaries',
-    fetcher: (client, limit) => client.getDocumentaries({ limit }),
-    limit: 15,
-  },
-];
 
 async function enrichWithTmdbMetadata(content: FeaturedContent): Promise<FeaturedContent> {
   if (!tmdbClient) {
@@ -250,19 +214,34 @@ export async function fetchFreshFeaturedContent(trendingClientInstance: Trending
     return getMockFeaturedContent();
   }
   
-  console.log('[CuratorService] Fetching fresh featured content from APIs using DEFAULT_CATEGORIES_CONFIG');
-  
+  console.log('[CuratorService] Fetching fresh featured content from category configuration');
+
   try {
-    const categoryPromises = DEFAULT_CATEGORIES_CONFIG.map(async (catConfig) => {
-      try {
-        const items: FeaturedItem[] = await catConfig.fetcher(trendingClientInstance, catConfig.limit);
-        console.log(`[CuratorService] Fetched ${items.length} items for category: ${catConfig.title}`);
-        return { id: catConfig.id, title: catConfig.title, items };
-      } catch (error) {
-        console.error(`[CuratorService] Error fetching category ${catConfig.title}:`, error);
-        return { id: catConfig.id, title: catConfig.title, items: [] };
-      }
-    });
+    const configs = await CategoryConfigService.getAllCategories();
+
+    const fetchers: Record<string, (c: TrendingContentClient, l: number) => Promise<FeaturedItem[]>> = {
+      trendingMovies: (c, l) => c.getTrendingMovies({ limit: l }),
+      popularTV: (c, l) => c.getPopularTV({ limit: l }),
+      newReleases: (c, l) => c.getNewReleases({ limit: l }),
+      top4KContent: (c, l) => c.get4KContent({ limit: l }),
+      documentaries: (c, l) => c.getDocumentaries({ limit: l }),
+    };
+
+    const categoryPromises = configs
+      .filter(cfg => cfg.enabled)
+      .map(async cfg => {
+        const source = cfg.tmdbParams?.source as string | undefined;
+        const fetcher = source && fetchers[source] ? fetchers[source] : async () => [] as FeaturedItem[];
+        const limit = typeof cfg.tmdbParams?.limit === 'number' ? cfg.tmdbParams!.limit : 15;
+        try {
+          const items = await fetcher(trendingClientInstance, limit);
+          console.log(`[CuratorService] Fetched ${items.length} items for category: ${cfg.title}`);
+          return { id: cfg._id, title: cfg.title, items };
+        } catch (error) {
+          console.error(`[CuratorService] Error fetching category ${cfg.title}:`, error);
+          return { id: cfg._id, title: cfg.title, items: [] };
+        }
+      });
 
     const resolvedCategoriesData = await Promise.all(categoryPromises);
     
