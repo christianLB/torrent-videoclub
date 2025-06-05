@@ -87,3 +87,8 @@ The application should now appear in the FireTV apps menu. Use a remote or game 
 - Add a `LEANBACK_LAUNCHER` intent filter in `AndroidManifest.xml` so the app shows on the FireTV home screen.
 - Testing on actual FireTV hardware is recommended to verify remote‑control navigation and performance.
 
+# Android/Fire TV Build Guide
+
+This guide outlines the steps to build and deploy the Android application for Fire TV devices.
+
+For an overview of the available backend endpoints refer to the [Backend API Reference](backend-api-reference.md).
