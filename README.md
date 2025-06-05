@@ -119,6 +119,12 @@ npm run build
 npm start
 ```
 
+### Building for FireTV
+
+For instructions on preparing the app for Amazon FireTV, see the
+[Android FireTV build guide](docs/android-firetv-build-guide.md). This guide
+walks you through exporting the Next.js app and packaging it with Capacitor.
+
 ## Development
 
 This project follows a strict Test-Driven Development (TDD) approach. All new features should be developed by writing tests first, then implementing the feature to make the tests pass.
